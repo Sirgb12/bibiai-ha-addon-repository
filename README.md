@@ -7,7 +7,7 @@ Home Assistant add-on repository for **BibiAI**, a Gemini-powered Discord bot th
 After this folder is pushed to GitHub, add the repository URL in Home Assistant:
 
 ```text
-https://github.com/YOUR_GITHUB_USERNAME/bibiai-ha-addon-repository
+https://github.com/Sirgb12/bibiai-ha-addon-repository
 ```
 
 In Home Assistant:

@@ -2,7 +2,7 @@ name: Minecraft Discord AI Bot
 version: "1.0.2"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
-url: "https://github.com/local/minecraft-discord-ai-bot"
+url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
 arch:
   - aarch64
   - amd64
