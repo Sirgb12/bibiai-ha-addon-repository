@@ -1,0 +1,61 @@
+name: Minecraft Discord AI Bot
+version: "1.0.2"
+slug: minecraft_discord_ai_bot
+description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
+url: "https://github.com/local/minecraft-discord-ai-bot"
+arch:
+  - aarch64
+  - amd64
+startup: application
+boot: auto
+init: false
+homeassistant_api: false
+host_network: false
+map:
+  - share:rw
+options:
+  discord_token: ""
+  discord_client_id: ""
+  discord_guild_id: ""
+  bot_allowed_channel_ids: ""
+  bot_admin_role_ids: ""
+  bot_persona_style: "Formal, stern, statesmanlike server operator. Sound like a high-stakes security briefing, but do not impersonate a real person."
+  bot_persona_file: "/share/bibiai_persona.txt"
+  gemini_api_key: ""
+  gemini_model: "gemini-3.5-flash"
+  mc_server_name: "Survival"
+  mc_rcon_host: "192.168.1.50"
+  mc_rcon_port: 25575
+  mc_rcon_password: ""
+  mc_query_host: "192.168.1.50"
+  mc_query_port: 25565
+  mc_log_path: ""
+  status_log_lines: 80
+  ai_auto_execute_safe_commands: true
+  allow_stop_command: false
+  bypass_rcon_safety: false
+  max_commands_per_fix: 6
+  rcon_timeout_ms: 5000
+schema:
+  discord_token: str
+  discord_client_id: str
+  discord_guild_id: str
+  bot_allowed_channel_ids: str
+  bot_admin_role_ids: str
+  bot_persona_style: str
+  bot_persona_file: str
+  gemini_api_key: str
+  gemini_model: str
+  mc_server_name: str
+  mc_rcon_host: str
+  mc_rcon_port: int
+  mc_rcon_password: str
+  mc_query_host: str
+  mc_query_port: int
+  mc_log_path: str
+  status_log_lines: int
+  ai_auto_execute_safe_commands: bool
+  allow_stop_command: bool
+  bypass_rcon_safety: bool
+  max_commands_per_fix: int
+  rcon_timeout_ms: int

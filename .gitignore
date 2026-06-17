@@ -1,0 +1,8 @@
+.DS_Store
+Thumbs.db
+.env
+node_modules/
+dist/
+coverage/
+*.log
+*.tar.gz

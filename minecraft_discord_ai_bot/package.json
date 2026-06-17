@@ -1,0 +1,31 @@
+{
+  "name": "minecraft-discord-ai-bot",
+  "version": "1.0.2",
+  "private": true,
+  "type": "module",
+  "description": "AI-powered Discord bot for diagnosing and safely fixing common Minecraft server issues over RCON.",
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/src/index.js",
+    "register:commands": "tsx scripts/registerCommands.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@google/genai": "^2.8.0",
+    "discord.js": "^14.26.4",
+    "dotenv": "^17.4.2",
+    "rcon-client": "^4.2.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
