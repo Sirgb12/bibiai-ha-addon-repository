@@ -205,6 +205,18 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
       return;
     }
 
+    if (subcommand === "start") {
+      if (!hasOperatorAccess(interaction.member)) {
+        await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+      const result = await minecraftMonitor.startServer(`manual start by ${userLabel(interaction.user.id, interaction.user.username)}`);
+      await interaction.editReply(result.message);
+      return;
+    }
+
     if (subcommand === "recover") {
       if (!hasOperatorAccess(interaction.member)) {
         await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });

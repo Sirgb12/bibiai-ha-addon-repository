@@ -11,6 +11,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
+- `/mc start`: start the server through the configured PebbleHost panel API.
 - `/mc recover`: trigger the configured recovery provider, such as PebbleHost or an external webhook.
 - `/mc fix issue:<choice> details:<text>`: generate an AI fix plan with buttons to run safe commands or explicitly confirm risky commands.
 - `/rcon command:<command>`: run one allowlisted RCON command as an operator.
@@ -284,7 +285,7 @@ Then set:
 mc_recovery_enabled: true
 ```
 
-After `mc_recovery_offline_checks` failed checks, BibiAI will call PebbleHost or the fallback webhook once for the outage. `/mc recover` lets an operator trigger it manually.
+After `mc_recovery_offline_checks` failed checks, BibiAI will call PebbleHost or the fallback webhook once for the outage. `/mc start` lets an operator send a PebbleHost start signal manually, and `/mc recover` lets an operator trigger the configured recovery flow manually.
 
 ## Weekly Reports
 
@@ -303,6 +304,7 @@ weekly_report_hour_utc: 18
 ```text
 /mc status
 /mc diagnostics
+/mc start
 /mc recover
 /ask prompt: TPS is low, check status and do safe fixes only.
 /mc fix issue:Lag / low TPS details: Players say mobs and item drops are everywhere near spawn.
@@ -317,6 +319,7 @@ For restarts, leave `ALLOW_STOP_COMMAND=false` until your server is managed by s
 - Slash commands missing: set `DISCORD_GUILD_ID`, run `npm.cmd run register:commands`, then restart Discord.
 - Mention chat ignored: enable Message Content intent in the Discord Developer Portal.
 - Timeouts do nothing: give the bot Moderate Members permission and move its Discord role above the role it should moderate.
-- Recovery does nothing: for PebbleHost, set `mc_recovery_enabled`, `pebblehost_api_enabled`, `pebblehost_api_token`, and `pebblehost_server_id`. For other hosts, `mc_recovery_webhook_url` must be a real restart/recovery endpoint.
+- `/mc start` does nothing: set `pebblehost_api_enabled`, `pebblehost_api_token`, and `pebblehost_server_id`.
+- Recovery does nothing: for PebbleHost automatic recovery, set `mc_recovery_enabled`, `pebblehost_api_enabled`, `pebblehost_api_token`, and `pebblehost_server_id`. For other hosts, `mc_recovery_webhook_url` must be a real restart/recovery endpoint.
 - AI refuses a command: it is probably not allowlisted in `src/minecraft/commandPolicy.ts`.
 - `tps` or `mspt` fails: vanilla Minecraft may not support those commands. Paper/Purpur usually do.

@@ -139,6 +139,24 @@ export class MinecraftMonitor {
       return { ok: false, message };
     }
   }
+
+  async startServer(reason: string): Promise<RecoveryResult> {
+    if (!config.pebblehost.enabled) {
+      return {
+        ok: false,
+        message: "Manual server start requires PebbleHost API support. Set pebblehost_api_enabled, pebblehost_api_token, and pebblehost_server_id."
+      };
+    }
+
+    const result = await this.pebblehost.sendPowerSignal("start");
+    await this.events.record(
+      "minecraft_recovery",
+      result.ok ? "PebbleHost start signal sent" : "PebbleHost start signal failed",
+      result.message,
+      { reason, ok: result.ok, provider: "pebblehost", signal: "start" }
+    );
+    return result;
+  }
 }
 
 function errorMessage(error: unknown): string {

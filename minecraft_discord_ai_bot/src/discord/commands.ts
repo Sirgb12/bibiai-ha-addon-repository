@@ -27,6 +27,9 @@ export const commands = [
       subcommand.setName("diagnostics").setDescription("Run deeper Minecraft diagnostics for operators.")
     )
     .addSubcommand((subcommand) =>
+      subcommand.setName("start").setDescription("Start the Minecraft server using the configured panel API.")
+    )
+    .addSubcommand((subcommand) =>
       subcommand.setName("recover").setDescription("Trigger the configured Minecraft recovery provider.")
     )
     .addSubcommand((subcommand) =>
