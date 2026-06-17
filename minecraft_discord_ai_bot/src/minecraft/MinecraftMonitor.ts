@@ -2,6 +2,7 @@ import { config } from "../config.js";
 import { EventLogStore } from "../events/EventLogStore.js";
 import { truncate } from "../util/text.js";
 import { MinecraftService, MinecraftStatus } from "./MinecraftService.js";
+import { PebbleHostApi } from "./PebbleHostApi.js";
 
 export type MonitorNotifier = (message: string) => Promise<void>;
 
@@ -19,7 +20,8 @@ export class MinecraftMonitor {
   constructor(
     private readonly minecraft: MinecraftService,
     private readonly events: EventLogStore,
-    private readonly notify: MonitorNotifier
+    private readonly notify: MonitorNotifier,
+    private readonly pebblehost = new PebbleHostApi()
   ) {}
 
   start(): void {
@@ -83,8 +85,22 @@ export class MinecraftMonitor {
       return { ok: false, message: "Recovery is disabled in the add-on config." };
     }
 
+    if (config.pebblehost.enabled) {
+      const result = await this.pebblehost.sendPowerSignal(config.pebblehost.recoverySignal);
+      await this.events.record(
+        "minecraft_recovery",
+        result.ok ? "PebbleHost recovery signal sent" : "PebbleHost recovery signal failed",
+        result.message,
+        { reason, ok: result.ok, provider: "pebblehost", signal: config.pebblehost.recoverySignal }
+      );
+      return result;
+    }
+
     if (!config.minecraft.recoveryWebhookUrl) {
-      return { ok: false, message: "Recovery is enabled, but no recovery webhook URL is configured." };
+      return {
+        ok: false,
+        message: "Recovery is enabled, but neither PebbleHost API nor a recovery webhook URL is configured."
+      };
     }
 
     const payload = {

@@ -27,7 +27,7 @@ export const commands = [
       subcommand.setName("diagnostics").setDescription("Run deeper Minecraft diagnostics for operators.")
     )
     .addSubcommand((subcommand) =>
-      subcommand.setName("recover").setDescription("Trigger the configured Minecraft recovery webhook.")
+      subcommand.setName("recover").setDescription("Trigger the configured Minecraft recovery provider.")
     )
     .addSubcommand((subcommand) =>
       subcommand

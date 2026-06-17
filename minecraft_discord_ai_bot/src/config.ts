@@ -79,6 +79,11 @@ const envSchema = z.object({
   MC_RECOVERY_WEBHOOK_URL: z.string().optional(),
   MC_RECOVERY_WEBHOOK_METHOD: z.enum(["POST", "GET"]).default("POST"),
   MC_RECOVERY_OFFLINE_CHECKS: z.coerce.number().int().min(1).max(20).default(2),
+  PEBBLEHOST_API_ENABLED: z.string().optional(),
+  PEBBLEHOST_API_TOKEN: z.string().optional(),
+  PEBBLEHOST_SERVER_ID: z.string().optional(),
+  PEBBLEHOST_RECOVERY_SIGNAL: z.enum(["start", "restart"]).default("start"),
+  PEBBLEHOST_API_BASE_URL: z.string().default("https://panel.pebblehost.com"),
   MINECRAFT_REPORT_CHANNEL_ID: z.string().optional(),
   WEEKLY_REPORT_ENABLED: z.string().optional(),
   WEEKLY_REPORT_DAY: z
@@ -125,6 +130,13 @@ export const config = {
     recoveryWebhookMethod: env.MC_RECOVERY_WEBHOOK_METHOD,
     recoveryOfflineChecks: env.MC_RECOVERY_OFFLINE_CHECKS,
     reportChannelId: cleanOptional(env.MINECRAFT_REPORT_CHANNEL_ID)
+  },
+  pebblehost: {
+    enabled: boolFromEnv(env.PEBBLEHOST_API_ENABLED, false),
+    apiToken: cleanOptional(env.PEBBLEHOST_API_TOKEN),
+    serverId: cleanOptional(env.PEBBLEHOST_SERVER_ID),
+    recoverySignal: env.PEBBLEHOST_RECOVERY_SIGNAL,
+    apiBaseUrl: env.PEBBLEHOST_API_BASE_URL
   },
   memory: {
     enabled: boolFromEnv(env.MEMORY_ENABLED, true),

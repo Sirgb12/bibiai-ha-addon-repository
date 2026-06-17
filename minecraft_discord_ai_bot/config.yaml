@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.2.0"
+version: "1.2.1"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -55,6 +55,11 @@ options:
   mc_recovery_webhook_url: ""
   mc_recovery_webhook_method: "POST"
   mc_recovery_offline_checks: 2
+  pebblehost_api_enabled: false
+  pebblehost_api_token: ""
+  pebblehost_server_id: ""
+  pebblehost_recovery_signal: "start"
+  pebblehost_api_base_url: "https://panel.pebblehost.com"
   minecraft_report_channel_id: ""
   weekly_report_enabled: true
   weekly_report_day: "sunday"
@@ -106,6 +111,11 @@ schema:
   mc_recovery_webhook_url: str
   mc_recovery_webhook_method: list(POST|GET)
   mc_recovery_offline_checks: int
+  pebblehost_api_enabled: bool
+  pebblehost_api_token: password
+  pebblehost_server_id: str
+  pebblehost_recovery_signal: list(start|restart)
+  pebblehost_api_base_url: str
   minecraft_report_channel_id: str
   weekly_report_enabled: bool
   weekly_report_day: list(sunday|monday|tuesday|wednesday|thursday|friday|saturday)

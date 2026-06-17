@@ -11,14 +11,14 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
-- `/mc recover`: trigger the configured external recovery webhook.
+- `/mc recover`: trigger the configured recovery provider, such as PebbleHost or an external webhook.
 - `/mc fix issue:<choice> details:<text>`: generate an AI fix plan with buttons to run safe commands or explicitly confirm risky commands.
 - `/rcon command:<command>`: run one allowlisted RCON command as an operator.
 - `/memory add/list/remove/clear`: manage persistent BibiAI memory.
 - Mention the bot in an enabled channel to chat with it.
 - Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
-- Minecraft monitor alerts, optional recovery webhook calls, and weekly bot-observed server reports.
+- Minecraft monitor alerts, optional PebbleHost/API recovery calls, and weekly bot-observed server reports.
 
 Regular users can ask questions and get diagnosis. Only users with one of `BOT_ADMIN_ROLE_IDS`, Administrator, or Manage Server can trigger RCON execution.
 
@@ -119,7 +119,11 @@ Recommended:
 - `MINECRAFT_REPORT_CHANNEL_ID`: optional channel for Minecraft monitor alerts and weekly reports.
 - `MC_MONITOR_ENABLED`: enables periodic Minecraft health checks.
 - `MC_RECOVERY_ENABLED`: enables webhook-based recovery attempts when the server appears offline.
-- `MC_RECOVERY_WEBHOOK_URL`: optional external URL from your host/panel/automation that restarts the server.
+- `PEBBLEHOST_API_ENABLED`: enables PebbleHost panel recovery through their API.
+- `PEBBLEHOST_API_TOKEN`: PebbleHost API token from your panel account.
+- `PEBBLEHOST_SERVER_ID`: PebbleHost server `identifier` or UUID.
+- `PEBBLEHOST_RECOVERY_SIGNAL`: `start` or `restart`. Defaults to `start`.
+- `MC_RECOVERY_WEBHOOK_URL`: optional fallback external URL from another host/panel/automation that restarts the server.
 - `WEEKLY_REPORT_ENABLED`: enables weekly bot-observed server reports.
 
 ## Register Commands
@@ -246,7 +250,29 @@ The bot needs Discord's **Moderate Members** permission and its role must be abo
 
 `MC_MONITOR_ENABLED=true` makes the bot check the Minecraft server every `MC_MONITOR_INTERVAL_MINUTES`. It reports offline/online transitions to `minecraft_report_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel.
 
-For externally hosted servers, BibiAI cannot restart the host by itself unless the host gives you a webhook or API endpoint. Put that URL in:
+For PebbleHost, BibiAI can call the PebbleHost panel API directly.
+
+1. In the PebbleHost game panel, open your account menu in the top right.
+2. Open **API Credentials** or **Generate API token**.
+3. Create a token and put it in `pebblehost_api_token`.
+4. Find your server ID by opening this URL with your token:
+
+   ```bash
+   curl -H "Authorization: Bearer YOUR_TOKEN" -H "Accept: application/json" https://panel.pebblehost.com/api/client
+   ```
+
+5. In the JSON, find your server and copy `attributes.identifier`, such as `5f1680e2`, or `attributes.uuid`.
+6. Put that value in `pebblehost_server_id`.
+
+Then set:
+
+```yaml
+mc_recovery_enabled: true
+pebblehost_api_enabled: true
+pebblehost_recovery_signal: "start"
+```
+
+For other externally hosted servers, BibiAI cannot restart the host by itself unless the host gives you a webhook or API endpoint. Put that URL in:
 
 ```text
 mc_recovery_webhook_url
@@ -258,7 +284,7 @@ Then set:
 mc_recovery_enabled: true
 ```
 
-After `mc_recovery_offline_checks` failed checks, BibiAI will call that webhook once for the outage. `/mc recover` lets an operator trigger it manually.
+After `mc_recovery_offline_checks` failed checks, BibiAI will call PebbleHost or the fallback webhook once for the outage. `/mc recover` lets an operator trigger it manually.
 
 ## Weekly Reports
 
@@ -291,6 +317,6 @@ For restarts, leave `ALLOW_STOP_COMMAND=false` until your server is managed by s
 - Slash commands missing: set `DISCORD_GUILD_ID`, run `npm.cmd run register:commands`, then restart Discord.
 - Mention chat ignored: enable Message Content intent in the Discord Developer Portal.
 - Timeouts do nothing: give the bot Moderate Members permission and move its Discord role above the role it should moderate.
-- Recovery does nothing: `mc_recovery_webhook_url` must be a real restart/recovery endpoint from your hosting panel or automation.
+- Recovery does nothing: for PebbleHost, set `mc_recovery_enabled`, `pebblehost_api_enabled`, `pebblehost_api_token`, and `pebblehost_server_id`. For other hosts, `mc_recovery_webhook_url` must be a real restart/recovery endpoint.
 - AI refuses a command: it is probably not allowlisted in `src/minecraft/commandPolicy.ts`.
 - `tps` or `mspt` fails: vanilla Minecraft may not support those commands. Paper/Purpur usually do.
