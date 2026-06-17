@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.2.2"
+version: "1.2.3"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -60,6 +60,15 @@ options:
   pebblehost_server_id: ""
   pebblehost_recovery_signal: "start"
   pebblehost_api_base_url: "https://panel.pebblehost.com"
+  join_server_address: ""
+  join_modpack_name: "Server modpack"
+  join_modpack_url: ""
+  join_modpack_loader: "CurseForge"
+  join_minecraft_version: ""
+  join_install_guide_url: ""
+  join_help_channel_id: ""
+  join_extra_notes: ""
+  join_auto_reply_enabled: true
   minecraft_report_channel_id: ""
   weekly_report_enabled: true
   weekly_report_day: "sunday"
@@ -116,6 +125,15 @@ schema:
   pebblehost_server_id: str
   pebblehost_recovery_signal: list(start|restart)
   pebblehost_api_base_url: str
+  join_server_address: str
+  join_modpack_name: str
+  join_modpack_url: str
+  join_modpack_loader: str
+  join_minecraft_version: str
+  join_install_guide_url: str
+  join_help_channel_id: str
+  join_extra_notes: str
+  join_auto_reply_enabled: bool
   minecraft_report_channel_id: str
   weekly_report_enabled: bool
   weekly_report_day: list(sunday|monday|tuesday|wednesday|thursday|friday|saturday)

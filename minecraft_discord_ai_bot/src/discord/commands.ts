@@ -18,6 +18,9 @@ export const commands = [
         .setRequired(false)
     ),
   new SlashCommandBuilder()
+    .setName("join")
+    .setDescription("Show the server IP, modpack link, and install steps for new players."),
+  new SlashCommandBuilder()
     .setName("mc")
     .setDescription("Minecraft server controls.")
     .addSubcommand((subcommand) =>

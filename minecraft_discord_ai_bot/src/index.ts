@@ -23,6 +23,7 @@ import { MemoryStore } from "./memory/MemoryStore.js";
 import { ModerationAction, ModerationService } from "./moderation/ModerationService.js";
 import { MinecraftMonitor } from "./minecraft/MinecraftMonitor.js";
 import { MinecraftService } from "./minecraft/MinecraftService.js";
+import { formatJoinInfo, looksLikeJoinHelpRequest } from "./onboarding/JoinInfo.js";
 import { WeeklyReporter } from "./reports/WeeklyReporter.js";
 import { splitDiscordText, truncate } from "./util/text.js";
 
@@ -91,6 +92,11 @@ client.on(Events.MessageCreate, async (message) => {
 
     if (!message.mentions.has(client.user)) return;
 
+    if (config.onboarding.autoReplyEnabled && looksLikeJoinHelpRequest(message.content)) {
+      await message.reply(formatJoinInfo());
+      return;
+    }
+
     const prompt = message.content
       .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
       .trim();
@@ -134,6 +140,11 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
       imageParts
     });
     await editWithChunks(interaction, answer);
+    return;
+  }
+
+  if (interaction.commandName === "join") {
+    await interaction.reply(formatJoinInfo());
     return;
   }
 

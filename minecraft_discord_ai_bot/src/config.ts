@@ -84,6 +84,15 @@ const envSchema = z.object({
   PEBBLEHOST_SERVER_ID: z.string().optional(),
   PEBBLEHOST_RECOVERY_SIGNAL: z.enum(["start", "restart"]).default("start"),
   PEBBLEHOST_API_BASE_URL: z.string().default("https://panel.pebblehost.com"),
+  JOIN_SERVER_ADDRESS: z.string().optional(),
+  JOIN_MODPACK_NAME: z.string().default("Server modpack"),
+  JOIN_MODPACK_URL: z.string().optional(),
+  JOIN_MODPACK_LOADER: z.string().default("CurseForge"),
+  JOIN_MINECRAFT_VERSION: z.string().optional(),
+  JOIN_INSTALL_GUIDE_URL: z.string().optional(),
+  JOIN_HELP_CHANNEL_ID: z.string().optional(),
+  JOIN_EXTRA_NOTES: z.string().max(1000).optional(),
+  JOIN_AUTO_REPLY_ENABLED: z.string().optional(),
   MINECRAFT_REPORT_CHANNEL_ID: z.string().optional(),
   WEEKLY_REPORT_ENABLED: z.string().optional(),
   WEEKLY_REPORT_DAY: z
@@ -137,6 +146,17 @@ export const config = {
     serverId: cleanOptional(env.PEBBLEHOST_SERVER_ID),
     recoverySignal: env.PEBBLEHOST_RECOVERY_SIGNAL,
     apiBaseUrl: env.PEBBLEHOST_API_BASE_URL
+  },
+  onboarding: {
+    serverAddress: cleanOptional(env.JOIN_SERVER_ADDRESS),
+    modpackName: cleanOptional(env.JOIN_MODPACK_NAME) ?? "Server modpack",
+    modpackUrl: cleanOptional(env.JOIN_MODPACK_URL),
+    modpackLoader: cleanOptional(env.JOIN_MODPACK_LOADER) ?? "CurseForge",
+    minecraftVersion: cleanOptional(env.JOIN_MINECRAFT_VERSION),
+    installGuideUrl: cleanOptional(env.JOIN_INSTALL_GUIDE_URL),
+    helpChannelId: cleanOptional(env.JOIN_HELP_CHANNEL_ID),
+    extraNotes: cleanOptional(env.JOIN_EXTRA_NOTES),
+    autoReplyEnabled: boolFromEnv(env.JOIN_AUTO_REPLY_ENABLED, true)
   },
   memory: {
     enabled: boolFromEnv(env.MEMORY_ENABLED, true),

@@ -11,6 +11,7 @@ import { config } from "../config.js";
 import { MemoryStore } from "../memory/MemoryStore.js";
 import { commandCatalogForPrompt, CommandRisk } from "../minecraft/commandPolicy.js";
 import { MinecraftService } from "../minecraft/MinecraftService.js";
+import { joinInfoForPrompt } from "../onboarding/JoinInfo.js";
 import { parseJsonObject } from "./json.js";
 
 export type FixPlanCommand = {
@@ -362,6 +363,9 @@ export class GeminiMinecraftAgent {
       "",
       "Persistent memory:",
       await this.memory.formatForPrompt(),
+      "",
+      "New player join information:",
+      joinInfoForPrompt(),
       "",
       "Command catalog:",
       commandCatalogForPrompt({

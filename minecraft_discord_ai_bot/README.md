@@ -9,6 +9,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 ## What It Can Do
 
 - `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
+- `/join`: show the server IP, modpack link, and install steps for new players.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
 - `/mc start`: start the server through the configured PebbleHost panel API.
@@ -126,6 +127,14 @@ Recommended:
 - `PEBBLEHOST_RECOVERY_SIGNAL`: `start` or `restart`. Defaults to `start`.
 - `MC_RECOVERY_WEBHOOK_URL`: optional fallback external URL from another host/panel/automation that restarts the server.
 - `WEEKLY_REPORT_ENABLED`: enables weekly bot-observed server reports.
+- `JOIN_SERVER_ADDRESS`: public Minecraft address shown to new players.
+- `JOIN_MODPACK_NAME`: display name for the modpack.
+- `JOIN_MODPACK_URL`: download/install link for the modpack.
+- `JOIN_MODPACK_LOADER`: launcher/app name, such as CurseForge, Modrinth, or Prism Launcher.
+- `JOIN_MINECRAFT_VERSION`: optional required Minecraft version.
+- `JOIN_INSTALL_GUIDE_URL`: optional longer install guide link.
+- `JOIN_HELP_CHANNEL_ID`: optional Discord channel ID for install help.
+- `JOIN_EXTRA_NOTES`: optional short notes shown under the join guide.
 
 ## Register Commands
 
@@ -235,6 +244,26 @@ or mention the bot while attaching an image:
 
 The bot sends image bytes directly to Gemini as inline image data. Keep images below `MAX_IMAGE_BYTES`.
 
+## New Player Join Help
+
+Use `/join` to show new players the configured server address, modpack, and install steps.
+
+Set these in the Home Assistant add-on config:
+
+```yaml
+join_server_address: "play.example.com"
+join_modpack_name: "Honda Fit SMP Modpack"
+join_modpack_url: "https://example.com/modpack"
+join_modpack_loader: "CurseForge"
+join_minecraft_version: "1.20.1"
+join_install_guide_url: "https://example.com/install-guide"
+join_help_channel_id: "123456789012345678"
+join_extra_notes: "Allocate at least 6 GB RAM if your launcher asks."
+join_auto_reply_enabled: true
+```
+
+When `join_auto_reply_enabled=true`, mentioning BibiAI with questions like "how do I join?", "what is the IP?", or "where is the modpack?" returns the same guide without spending an AI request.
+
 ## Moderation
 
 When `MODERATION_ENABLED=true`, BibiAI can apply short Discord communication timeouts. It ignores bots and operators, and it never kicks or bans.
@@ -306,6 +335,7 @@ weekly_report_hour_utc: 18
 /mc diagnostics
 /mc start
 /mc recover
+/join
 /ask prompt: TPS is low, check status and do safe fixes only.
 /mc fix issue:Lag / low TPS details: Players say mobs and item drops are everywhere near spawn.
 /rcon command:save-all
