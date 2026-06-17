@@ -21,6 +21,14 @@ export MC_QUERY_PORT="$(bashio::config 'mc_query_port')"
 export MC_LOG_PATH="$(bashio::config 'mc_log_path')"
 export STATUS_LOG_LINES="$(bashio::config 'status_log_lines')"
 
+export MEMORY_ENABLED="$(bashio::config 'memory_enabled')"
+export MEMORY_PATH="$(bashio::config 'memory_path')"
+export MAX_MEMORY_ITEMS="$(bashio::config 'max_memory_items')"
+export MAX_MEMORY_ENTRY_LENGTH="$(bashio::config 'max_memory_entry_length')"
+
+export VISION_ENABLED="$(bashio::config 'vision_enabled')"
+export MAX_IMAGE_BYTES="$(bashio::config 'max_image_bytes')"
+
 export AI_AUTO_EXECUTE_SAFE_COMMANDS="$(bashio::config 'ai_auto_execute_safe_commands')"
 export ALLOW_STOP_COMMAND="$(bashio::config 'allow_stop_command')"
 export BYPASS_RCON_SAFETY="$(bashio::config 'bypass_rcon_safety')"

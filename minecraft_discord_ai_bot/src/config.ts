@@ -55,6 +55,12 @@ const envSchema = z.object({
   MC_QUERY_PORT: z.coerce.number().int().min(1).max(65535).default(25565),
   MC_LOG_PATH: z.string().optional(),
   STATUS_LOG_LINES: z.coerce.number().int().min(0).max(500).default(80),
+  MEMORY_ENABLED: z.string().optional(),
+  MEMORY_PATH: z.string().default("/data/bibiai-memory.json"),
+  MAX_MEMORY_ITEMS: z.coerce.number().int().min(1).max(200).default(40),
+  MAX_MEMORY_ENTRY_LENGTH: z.coerce.number().int().min(80).max(2000).default(500),
+  VISION_ENABLED: z.string().optional(),
+  MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
   AI_AUTO_EXECUTE_SAFE_COMMANDS: z.string().optional(),
   ALLOW_STOP_COMMAND: z.string().optional(),
   BYPASS_RCON_SAFETY: z.string().optional(),
@@ -88,6 +94,16 @@ export const config = {
     statusLogLines: env.STATUS_LOG_LINES,
     rconTimeoutMs: env.RCON_TIMEOUT_MS,
     maxCommandsPerFix: env.MAX_COMMANDS_PER_FIX
+  },
+  memory: {
+    enabled: boolFromEnv(env.MEMORY_ENABLED, true),
+    path: env.MEMORY_PATH,
+    maxItems: env.MAX_MEMORY_ITEMS,
+    maxEntryLength: env.MAX_MEMORY_ENTRY_LENGTH
+  },
+  vision: {
+    enabled: boolFromEnv(env.VISION_ENABLED, true),
+    maxImageBytes: env.MAX_IMAGE_BYTES
   },
   safety: {
     autoExecuteSafeCommands: boolFromEnv(env.AI_AUTO_EXECUTE_SAFE_COMMANDS, true),

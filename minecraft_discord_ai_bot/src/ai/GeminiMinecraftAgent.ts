@@ -8,6 +8,7 @@ import {
 } from "@google/genai";
 import { z } from "zod";
 import { config } from "../config.js";
+import { MemoryStore } from "../memory/MemoryStore.js";
 import { commandCatalogForPrompt, CommandRisk } from "../minecraft/commandPolicy.js";
 import { MinecraftService } from "../minecraft/MinecraftService.js";
 import { parseJsonObject } from "./json.js";
@@ -100,16 +101,48 @@ const toolDeclarations: FunctionDeclaration[] = [
       },
       required: ["command", "reason"]
     }
+  },
+  {
+    name: "remember_fact",
+    description:
+      "Persist a stable non-secret memory when the user explicitly asks you to remember it or gives lasting server/community context.",
+    parametersJsonSchema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        text: {
+          type: "string",
+          description: "The non-secret fact to remember."
+        },
+        category: {
+          type: "string",
+          enum: ["general", "server", "community", "user", "ops"],
+          description: "Memory category."
+        }
+      },
+      required: ["text", "category"]
+    }
   }
 ];
 
 export class GeminiMinecraftAgent {
   private readonly client = new GoogleGenAI({ apiKey: config.gemini.apiKey });
 
-  constructor(private readonly minecraft: MinecraftService) {}
+  constructor(
+    private readonly minecraft: MinecraftService,
+    private readonly memory: MemoryStore
+  ) {}
 
-  async ask(prompt: string, options: { allowCommandExecution: boolean }): Promise<string> {
-    const contents: Content[] = [{ role: "user", parts: [{ text: prompt }] }];
+  async ask(
+    prompt: string,
+    options: { allowCommandExecution: boolean; userLabel: string; imageParts?: Part[] }
+  ): Promise<string> {
+    const contents: Content[] = [
+      {
+        role: "user",
+        parts: [{ text: prompt }, ...(options.imageParts ?? [])]
+      }
+    ];
     let safeCommandsRun = 0;
 
     for (let step = 0; step < 5; step += 1) {
@@ -117,7 +150,7 @@ export class GeminiMinecraftAgent {
         model: config.gemini.model,
         contents,
         config: {
-          systemInstruction: this.instructions(
+          systemInstruction: await this.instructions(
             options.allowCommandExecution
               ? ""
               : "This user is not an operator. You may inspect status, but do not execute Minecraft commands. Suggest commands for an operator instead."
@@ -181,7 +214,7 @@ export class GeminiMinecraftAgent {
         model: config.gemini.model,
         contents: prompt,
         config: {
-          systemInstruction: this.instructions("Return strict JSON only for fix plans."),
+          systemInstruction: await this.instructions("Return strict JSON only for fix plans."),
           responseMimeType: "application/json",
           responseJsonSchema: fixPlanJsonSchema
         }
@@ -196,7 +229,7 @@ export class GeminiMinecraftAgent {
 
   private async handleToolCall(
     call: FunctionCall,
-    options: { allowCommandExecution: boolean },
+    options: { allowCommandExecution: boolean; userLabel: string },
     safeCommandsRun: number
   ): Promise<{ countedAsSafeCommand: boolean; response: Record<string, unknown> }> {
     const args = call.args ?? {};
@@ -208,6 +241,36 @@ export class GeminiMinecraftAgent {
           output: await this.minecraft.getStatus(Boolean(args.includeRecentLogs))
         }
       };
+    }
+
+    if (call.name === "remember_fact") {
+      try {
+        const entry = await this.memory.add(
+          String(args.text ?? ""),
+          options.userLabel,
+          String(args.category ?? "general")
+        );
+
+        return {
+          countedAsSafeCommand: false,
+          response: {
+            output: {
+              ok: true,
+              remembered: entry
+            }
+          }
+        };
+      } catch (error) {
+        return {
+          countedAsSafeCommand: false,
+          response: {
+            output: {
+              ok: false,
+              reason: error instanceof Error ? error.message : String(error)
+            }
+          }
+        };
+      }
     }
 
     if (call.name !== "run_minecraft_command") {
@@ -283,17 +346,22 @@ export class GeminiMinecraftAgent {
     };
   }
 
-  private instructions(extra = ""): string {
+  private async instructions(extra = ""): Promise<string> {
     return [
       "You are an AI Minecraft server operator assistant inside a Discord bot.",
       "Help diagnose and fix common Minecraft server issues through RCON only.",
       "Never invent shell access, never ask for passwords, and never run commands outside the catalog.",
       "You may run only commands whose policy risk is read or safe. Risky commands need human confirmation.",
+      "Memory is persistent across restarts. Use remember_fact only when a user explicitly asks you to remember something or provides stable server/community context.",
+      "Never store tokens, API keys, passwords, private addresses, or other secrets in memory.",
       "When you act, mention the exact Minecraft commands you ran and the result.",
       "Keep Discord replies concise and practical.",
       "For every natural-language reply you generate, strongly follow the configured speaking style.",
       "Do not merely answer normally; make the tone, phrasing, and framing noticeably match the style while staying concise.",
       `Configured speaking style: ${config.discord.personaStyle}`,
+      "",
+      "Persistent memory:",
+      await this.memory.formatForPrompt(),
       "",
       "Command catalog:",
       commandCatalogForPrompt({

@@ -2,6 +2,8 @@
 
 Home Assistant add-on repository for **BibiAI**, a Gemini-powered Discord bot that can diagnose and safely operate a Minecraft server over RCON.
 
+Features include persistent memory, Discord slash commands, Gemini image understanding for attachments, and guarded Minecraft RCON actions.
+
 ## Add This Repository To Home Assistant
 
 After this folder is pushed to GitHub, add the repository URL in Home Assistant:
@@ -28,6 +30,12 @@ For long custom persona prompts, create this file in Home Assistant:
 ```
 
 The add-on automatically reads it on startup.
+
+Persistent bot memory is stored in the add-on data folder:
+
+```text
+/data/bibiai-memory.json
+```
 
 ## Important
 

@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.0.2"
+version: "1.1.0"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -31,6 +31,12 @@ options:
   mc_query_port: 25565
   mc_log_path: ""
   status_log_lines: 80
+  memory_enabled: true
+  memory_path: "/data/bibiai-memory.json"
+  max_memory_items: 40
+  max_memory_entry_length: 500
+  vision_enabled: true
+  max_image_bytes: 8388608
   ai_auto_execute_safe_commands: true
   allow_stop_command: false
   bypass_rcon_safety: false
@@ -54,6 +60,12 @@ schema:
   mc_query_port: int
   mc_log_path: str
   status_log_lines: int
+  memory_enabled: bool
+  memory_path: str
+  max_memory_items: int
+  max_memory_entry_length: int
+  vision_enabled: bool
+  max_image_bytes: int
   ai_auto_execute_safe_commands: bool
   allow_stop_command: bool
   bypass_rcon_safety: bool

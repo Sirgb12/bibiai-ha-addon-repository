@@ -14,9 +14,11 @@ import {
   REST,
   Routes
 } from "discord.js";
+import type { Part } from "@google/genai";
 import { config } from "./config.js";
 import { GeminiMinecraftAgent, FixPlan } from "./ai/GeminiMinecraftAgent.js";
 import { commands } from "./discord/commands.js";
+import { MemoryStore } from "./memory/MemoryStore.js";
 import { MinecraftService } from "./minecraft/MinecraftService.js";
 import { splitDiscordText, truncate } from "./util/text.js";
 
@@ -29,7 +31,8 @@ type PendingPlan = {
 };
 
 const minecraft = new MinecraftService();
-const agent = new GeminiMinecraftAgent(minecraft);
+const memory = new MemoryStore();
+const agent = new GeminiMinecraftAgent(minecraft, memory);
 const pendingPlans = new Map<string, PendingPlan>();
 
 const client = new Client({
@@ -56,22 +59,33 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot || !client.user) return;
-  if (!message.mentions.has(client.user)) return;
-  if (!isAllowedChannel(message.channelId)) return;
+  try {
+    if (message.author.bot || !client.user) return;
+    if (!message.mentions.has(client.user)) return;
+    if (!isAllowedChannel(message.channelId)) return;
 
-  const prompt = message.content
-    .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
-    .trim();
+    const prompt = message.content
+      .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
+      .trim();
 
-  if (!prompt) {
-    await message.reply("Tell me what is broken on the server and I will take a look.");
-    return;
+    const imageParts = await imagePartsFromAttachments([...message.attachments.values()]);
+
+    if (!prompt && imageParts.length === 0) {
+      await message.reply("Tell me what is broken on the server and I will take a look.");
+      return;
+    }
+
+    await message.channel.sendTyping();
+    const answer = await agent.ask(prompt || "Describe the attached image.", {
+      allowCommandExecution: hasOperatorAccess(message.member),
+      userLabel: userLabel(message.author.id, message.author.username),
+      imageParts
+    });
+    await replyInChunks(message, answer);
+  } catch (error) {
+    console.error(error);
+    await message.reply(`Something broke while handling that: ${errorMessage(error)}`);
   }
-
-  await message.channel.sendTyping();
-  const answer = await agent.ask(prompt, { allowCommandExecution: hasOperatorAccess(message.member) });
-  await replyInChunks(message, answer);
 });
 
 await client.login(config.discord.token);
@@ -85,9 +99,55 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
   if (interaction.commandName === "ask") {
     await interaction.deferReply();
     const prompt = interaction.options.getString("prompt", true);
-    const answer = await agent.ask(prompt, { allowCommandExecution: hasOperatorAccess(interaction.member) });
+    const attachment = interaction.options.getAttachment("image");
+    const imageParts = await imagePartsFromAttachments(attachment ? [attachment] : []);
+    const answer = await agent.ask(prompt, {
+      allowCommandExecution: hasOperatorAccess(interaction.member),
+      userLabel: userLabel(interaction.user.id, interaction.user.username),
+      imageParts
+    });
     await editWithChunks(interaction, answer);
     return;
+  }
+
+  if (interaction.commandName === "memory") {
+    if (!hasOperatorAccess(interaction.member)) {
+      await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
+      return;
+    }
+
+    const subcommand = interaction.options.getSubcommand(true);
+
+    if (subcommand === "add") {
+      const entry = await memory.add(
+        interaction.options.getString("text", true),
+        userLabel(interaction.user.id, interaction.user.username),
+        interaction.options.getString("category") ?? "general"
+      );
+      await interaction.reply({ content: `Remembered \`${entry.id}\`: ${entry.text}`, ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "list") {
+      const entries = await memory.list();
+      await interaction.reply({
+        content: entries.length ? formatMemoryEntries(entries) : "BibiAI has no memories yet.",
+        ephemeral: true
+      });
+      return;
+    }
+
+    if (subcommand === "remove") {
+      const removed = await memory.remove(interaction.options.getString("id", true));
+      await interaction.reply({ content: removed ? "Memory removed." : "No memory with that ID.", ephemeral: true });
+      return;
+    }
+
+    if (subcommand === "clear") {
+      const count = await memory.clear();
+      await interaction.reply({ content: `Cleared ${count} memories.`, ephemeral: true });
+      return;
+    }
   }
 
   if (interaction.commandName === "mc") {
@@ -288,6 +348,13 @@ function formatCommandResults(results: Array<{ command: string; ok: boolean; out
   );
 }
 
+function formatMemoryEntries(entries: Array<{ id: string; category: string; text: string }>): string {
+  return truncate(
+    entries.map((entry) => `\`${entry.id}\` [${entry.category}] ${entry.text}`).join("\n"),
+    1900
+  );
+}
+
 function isAllowedChannel(channelId: string | null): boolean {
   if (!channelId || config.discord.allowedChannelIds.length === 0) return true;
   return config.discord.allowedChannelIds.includes(channelId);
@@ -339,6 +406,70 @@ async function replySafely(interaction: Interaction, content: string): Promise<v
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function userLabel(id: string, username: string): string {
+  return `${username} (${id})`;
+}
+
+type DiscordAttachmentLike = {
+  url: string;
+  name: string | null;
+  contentType: string | null;
+  size: number;
+};
+
+async function imagePartsFromAttachments(attachments: DiscordAttachmentLike[]): Promise<Part[]> {
+  const imageAttachments = attachments.filter((attachment) => isImageAttachment(attachment));
+  if (imageAttachments.length === 0) return [];
+
+  if (!config.vision.enabled) {
+    throw new Error("Image understanding is disabled by VISION_ENABLED=false.");
+  }
+
+  const selected = imageAttachments.slice(0, 3);
+  const parts: Part[] = [];
+
+  for (const attachment of selected) {
+    if (attachment.size > config.vision.maxImageBytes) {
+      throw new Error(`Image ${attachment.name ?? attachment.url} is too large. Max is ${config.vision.maxImageBytes} bytes.`);
+    }
+
+    const response = await fetch(attachment.url);
+    if (!response.ok) {
+      throw new Error(`Could not download image ${attachment.name ?? attachment.url}: HTTP ${response.status}`);
+    }
+
+    const mimeType = response.headers.get("content-type") ?? attachment.contentType ?? inferImageMimeType(attachment.name);
+    if (!mimeType?.startsWith("image/")) {
+      throw new Error(`Attachment ${attachment.name ?? attachment.url} is not an image.`);
+    }
+
+    const bytes = Buffer.from(await response.arrayBuffer());
+    parts.push({
+      inlineData: {
+        mimeType,
+        data: bytes.toString("base64")
+      }
+    });
+  }
+
+  return parts;
+}
+
+function isImageAttachment(attachment: DiscordAttachmentLike): boolean {
+  if (attachment.contentType?.startsWith("image/")) return true;
+  return Boolean(inferImageMimeType(attachment.name));
+}
+
+function inferImageMimeType(name: string | null): string | undefined {
+  const lowered = name?.toLowerCase();
+  if (!lowered) return undefined;
+  if (lowered.endsWith(".png")) return "image/png";
+  if (lowered.endsWith(".jpg") || lowered.endsWith(".jpeg")) return "image/jpeg";
+  if (lowered.endsWith(".webp")) return "image/webp";
+  if (lowered.endsWith(".gif")) return "image/gif";
+  return undefined;
 }
 
 async function registerSlashCommands(): Promise<void> {

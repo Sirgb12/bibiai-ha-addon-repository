@@ -10,6 +10,12 @@ export const commands = [
         .setDescription("What do you want the bot to diagnose or do?")
         .setRequired(true)
         .setMaxLength(1500)
+    )
+    .addAttachmentOption((option) =>
+      option
+        .setName("image")
+        .setDescription("Optional image for BibiAI to inspect.")
+        .setRequired(false)
     ),
   new SlashCommandBuilder()
     .setName("mc")
@@ -53,5 +59,50 @@ export const commands = [
         .setDescription("Minecraft command without the leading slash.")
         .setRequired(true)
         .setMaxLength(200)
+    ),
+  new SlashCommandBuilder()
+    .setName("memory")
+    .setDescription("Manage BibiAI persistent memory.")
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("add")
+        .setDescription("Add a non-secret memory.")
+        .addStringOption((option) =>
+          option
+            .setName("text")
+            .setDescription("What should BibiAI remember?")
+            .setRequired(true)
+            .setMaxLength(500)
+        )
+        .addStringOption((option) =>
+          option
+            .setName("category")
+            .setDescription("Memory category.")
+            .setRequired(false)
+            .addChoices(
+              { name: "General", value: "general" },
+              { name: "Server", value: "server" },
+              { name: "Community", value: "community" },
+              { name: "User", value: "user" },
+              { name: "Ops", value: "ops" }
+            )
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand.setName("list").setDescription("List current memories.")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("remove")
+        .setDescription("Remove one memory by ID.")
+        .addStringOption((option) =>
+          option
+            .setName("id")
+            .setDescription("Memory ID from /memory list.")
+            .setRequired(true)
+        )
+    )
+    .addSubcommand((subcommand) =>
+      subcommand.setName("clear").setDescription("Clear all memories.")
     )
 ].map((command) => command.toJSON());

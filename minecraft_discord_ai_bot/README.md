@@ -12,7 +12,9 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc fix issue:<choice> details:<text>`: generate an AI fix plan with buttons to run safe commands or explicitly confirm risky commands.
 - `/rcon command:<command>`: run one allowlisted RCON command as an operator.
+- `/memory add/list/remove/clear`: manage persistent BibiAI memory.
 - Mention the bot in an enabled channel to chat with it.
+- Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 
 Regular users can ask questions and get diagnosis. Only users with one of `BOT_ADMIN_ROLE_IDS`, Administrator, or Manage Server can trigger RCON execution.
 
@@ -99,6 +101,10 @@ Recommended:
 - `BOT_ADMIN_ROLE_IDS`: comma-separated role IDs allowed to use `/mc fix`, `/rcon`, and confirmation buttons.
 - `BOT_PERSONA_STYLE`: broad speaking style for the bot. Avoid asking it to impersonate a real living person; use a general style instead.
 - `MC_LOG_PATH`: path to `logs/latest.log` for better AI diagnosis.
+- `MEMORY_ENABLED`: enables persistent memory. Defaults to `true`.
+- `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
+- `VISION_ENABLED`: enables image attachment understanding. Defaults to `true`.
+- `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
 
 ## Register Commands
 
@@ -170,6 +176,43 @@ If Home Assistant keeps removing a long multiline persona from the add-on config
 ```
 
 The add-on automatically reads that file on startup. You do not need to keep `bot_persona_file` in the add-on configuration.
+
+## Memory
+
+BibiAI stores memory in:
+
+```text
+/data/bibiai-memory.json
+```
+
+That file is inside the add-on's persistent data folder, so it survives restarts and updates.
+
+Operators can manage memory in Discord:
+
+```text
+/memory add text:Hummingbird mains require additional scrutiny. category:Community
+/memory list
+/memory remove id:<memory-id>
+/memory clear
+```
+
+The AI can also save a memory when a user explicitly asks it to remember something. It refuses obvious tokens, API keys, passwords, and secrets.
+
+## Images
+
+Use either:
+
+```text
+/ask prompt:What is in this image? image:<attachment>
+```
+
+or mention the bot while attaching an image:
+
+```text
+@BibiAI inspect this screenshot
+```
+
+The bot sends image bytes directly to Gemini as inline image data. Keep images below `MAX_IMAGE_BYTES`.
 
 ## Useful Examples
 
