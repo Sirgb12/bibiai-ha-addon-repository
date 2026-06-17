@@ -2,6 +2,7 @@ import { createConnection } from "node:net";
 import { open, stat } from "node:fs/promises";
 import { Rcon } from "rcon-client";
 import { config } from "../config.js";
+import { codeBlock, truncate } from "../util/text.js";
 import {
   CommandEvaluation,
   evaluateCommand,
@@ -157,6 +158,23 @@ export class MinecraftService {
     if (status.errors.length) lines.push(`Errors: ${status.errors.join(" | ")}`);
 
     return lines.join("\n");
+  }
+
+  formatDiagnostics(status: MinecraftStatus): string {
+    const sections = [
+      this.formatStatus(status),
+      "",
+      "**Diagnostics**",
+      `Query target: ${config.minecraft.queryHost}:${config.minecraft.queryPort}`,
+      `RCON target: ${config.minecraft.rconHost}:${config.minecraft.rconPort}`,
+      `Recent logs configured: ${config.minecraft.logPath ? "yes" : "no"}`
+    ];
+
+    if (status.recentLogs) {
+      sections.push("", "**Recent logs**", codeBlock(truncate(status.recentLogs, 1000), "log"));
+    }
+
+    return truncate(sections.join("\n"), 1900);
   }
 
   private async sendRcon(command: string): Promise<string> {

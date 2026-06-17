@@ -18,8 +18,12 @@ import type { Part } from "@google/genai";
 import { config } from "./config.js";
 import { GeminiMinecraftAgent, FixPlan } from "./ai/GeminiMinecraftAgent.js";
 import { commands } from "./discord/commands.js";
+import { EventLogStore } from "./events/EventLogStore.js";
 import { MemoryStore } from "./memory/MemoryStore.js";
+import { ModerationAction, ModerationService } from "./moderation/ModerationService.js";
+import { MinecraftMonitor } from "./minecraft/MinecraftMonitor.js";
 import { MinecraftService } from "./minecraft/MinecraftService.js";
+import { WeeklyReporter } from "./reports/WeeklyReporter.js";
 import { splitDiscordText, truncate } from "./util/text.js";
 
 type PendingPlan = {
@@ -32,6 +36,8 @@ type PendingPlan = {
 
 const minecraft = new MinecraftService();
 const memory = new MemoryStore();
+const events = new EventLogStore();
+const moderation = new ModerationService();
 const agent = new GeminiMinecraftAgent(minecraft, memory);
 const pendingPlans = new Map<string, PendingPlan>();
 
@@ -39,10 +45,15 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
 
+const minecraftMonitor = new MinecraftMonitor(minecraft, events, sendMinecraftNotice);
+const weeklyReporter = new WeeklyReporter(minecraft, events, sendWeeklyReport);
+
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}.`);
   console.log(`Persona style loaded: ${config.discord.personaStyle}`);
   await registerSlashCommands();
+  minecraftMonitor.start();
+  weeklyReporter.start();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -61,8 +72,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
 client.on(Events.MessageCreate, async (message) => {
   try {
     if (message.author.bot || !client.user) return;
-    if (!message.mentions.has(client.user)) return;
     if (!isAllowedChannel(message.channelId)) return;
+
+    const moderationAction = await moderation.moderate(message, client.user.id, hasOperatorAccess(message.member));
+    if (moderationAction) {
+      await events.record(
+        "moderation",
+        `Timed out ${moderationAction.username}`,
+        `${moderationAction.rule}: ${moderationAction.reason}`,
+        {
+          userId: moderationAction.userId,
+          timeoutMinutes: moderationAction.timeoutMinutes
+        }
+      );
+      await sendModerationNotice(message, moderationAction);
+      return;
+    }
+
+    if (!message.mentions.has(client.user)) return;
 
     const prompt = message.content
       .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
@@ -157,6 +184,36 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
       await interaction.deferReply();
       const status = await minecraft.getStatus(false);
       await interaction.editReply(minecraft.formatStatus(status));
+      return;
+    }
+
+    if (subcommand === "diagnostics") {
+      if (!hasOperatorAccess(interaction.member)) {
+        await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+      const status = await minecraft.getStatus(true);
+      await events.record(
+        "minecraft_diagnostics",
+        `${status.serverName} diagnostics requested`,
+        `TCP ${status.tcpOnline ? "online" : "offline"}, RCON ${status.rconOnline ? "online" : "offline"}`,
+        { userId: interaction.user.id }
+      );
+      await interaction.editReply(minecraft.formatDiagnostics(status));
+      return;
+    }
+
+    if (subcommand === "recover") {
+      if (!hasOperatorAccess(interaction.member)) {
+        await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+      const result = await minecraftMonitor.triggerRecovery(`manual request by ${userLabel(interaction.user.id, interaction.user.username)}`);
+      await interaction.editReply(result.message);
       return;
     }
 
@@ -392,6 +449,55 @@ async function replyInChunks(message: Message, text: string): Promise<void> {
   for (const chunk of chunks.length ? chunks : ["(empty response)"]) {
     await message.reply(chunk);
   }
+}
+
+async function sendModerationNotice(message: Message, action: ModerationAction): Promise<void> {
+  const channelId = config.moderation.logChannelId ?? message.channelId;
+  await sendToDiscordChannel(
+    channelId,
+    `**BibiAI moderation:** timed out <@${action.userId}> for ${action.timeoutMinutes} minute(s). Rule: ${action.rule}.`
+  );
+}
+
+async function sendMinecraftNotice(content: string): Promise<void> {
+  const channelId = notificationChannelId();
+  if (!channelId) {
+    console.log(content.replace(/\*\*/g, ""));
+    return;
+  }
+
+  await sendToDiscordChannel(channelId, content);
+}
+
+async function sendWeeklyReport(content: string): Promise<void> {
+  const channelId = notificationChannelId();
+  if (!channelId) {
+    console.log(content.replace(/\*\*/g, ""));
+    return;
+  }
+
+  await sendToDiscordChannel(channelId, content);
+}
+
+function notificationChannelId(): string | undefined {
+  return config.minecraft.reportChannelId ?? config.moderation.logChannelId ?? config.discord.allowedChannelIds[0];
+}
+
+async function sendToDiscordChannel(channelId: string | undefined, content: string): Promise<boolean> {
+  if (!channelId) return false;
+
+  const channel = await client.channels.fetch(channelId).catch(() => null);
+  const sendable = channel as { send?: (options: { content: string; allowedMentions?: { users: string[] } }) => Promise<unknown> } | null;
+  if (typeof sendable?.send !== "function") {
+    console.warn(`Could not send notification to Discord channel ${channelId}.`);
+    return false;
+  }
+
+  await sendable.send({
+    content: truncate(content, 1900),
+    allowedMentions: { users: [] }
+  });
+  return true;
 }
 
 async function replySafely(interaction: Interaction, content: string): Promise<void> {

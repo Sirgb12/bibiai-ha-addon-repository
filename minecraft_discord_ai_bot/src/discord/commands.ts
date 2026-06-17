@@ -24,6 +24,12 @@ export const commands = [
       subcommand.setName("status").setDescription("Check Minecraft server status.")
     )
     .addSubcommand((subcommand) =>
+      subcommand.setName("diagnostics").setDescription("Run deeper Minecraft diagnostics for operators.")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand.setName("recover").setDescription("Trigger the configured Minecraft recovery webhook.")
+    )
+    .addSubcommand((subcommand) =>
       subcommand
         .setName("fix")
         .setDescription("Create an AI fix plan and optionally run approved commands.")

@@ -61,6 +61,30 @@ const envSchema = z.object({
   MAX_MEMORY_ENTRY_LENGTH: z.coerce.number().int().min(80).max(2000).default(500),
   VISION_ENABLED: z.string().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
+  MODERATION_ENABLED: z.string().optional(),
+  MODERATION_LOG_CHANNEL_ID: z.string().optional(),
+  MODERATION_MIN_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(1),
+  MODERATION_MAX_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(5),
+  MODERATION_RULE_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(5),
+  MODERATION_OFFENSE_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(1),
+  MODERATION_SPAM_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(2),
+  SPAM_BIBIAI_WINDOW_MS: z.coerce.number().int().min(5000).max(300000).default(30000),
+  SPAM_BIBIAI_LIMIT: z.coerce.number().int().min(2).max(20).default(4),
+  EVENT_LOG_PATH: z.string().default("/data/bibiai-events.json"),
+  EVENT_LOG_RETENTION_DAYS: z.coerce.number().int().min(7).max(365).default(60),
+  EVENT_LOG_MAX_ITEMS: z.coerce.number().int().min(50).max(5000).default(500),
+  MC_MONITOR_ENABLED: z.string().optional(),
+  MC_MONITOR_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(1440).default(5),
+  MC_RECOVERY_ENABLED: z.string().optional(),
+  MC_RECOVERY_WEBHOOK_URL: z.string().optional(),
+  MC_RECOVERY_WEBHOOK_METHOD: z.enum(["POST", "GET"]).default("POST"),
+  MC_RECOVERY_OFFLINE_CHECKS: z.coerce.number().int().min(1).max(20).default(2),
+  MINECRAFT_REPORT_CHANNEL_ID: z.string().optional(),
+  WEEKLY_REPORT_ENABLED: z.string().optional(),
+  WEEKLY_REPORT_DAY: z
+    .enum(["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"])
+    .default("sunday"),
+  WEEKLY_REPORT_HOUR_UTC: z.coerce.number().int().min(0).max(23).default(18),
   AI_AUTO_EXECUTE_SAFE_COMMANDS: z.string().optional(),
   ALLOW_STOP_COMMAND: z.string().optional(),
   BYPASS_RCON_SAFETY: z.string().optional(),
@@ -93,7 +117,14 @@ export const config = {
     logPath: env.MC_LOG_PATH?.trim() || undefined,
     statusLogLines: env.STATUS_LOG_LINES,
     rconTimeoutMs: env.RCON_TIMEOUT_MS,
-    maxCommandsPerFix: env.MAX_COMMANDS_PER_FIX
+    maxCommandsPerFix: env.MAX_COMMANDS_PER_FIX,
+    monitorEnabled: boolFromEnv(env.MC_MONITOR_ENABLED, true),
+    monitorIntervalMinutes: env.MC_MONITOR_INTERVAL_MINUTES,
+    recoveryEnabled: boolFromEnv(env.MC_RECOVERY_ENABLED, false),
+    recoveryWebhookUrl: cleanOptional(env.MC_RECOVERY_WEBHOOK_URL),
+    recoveryWebhookMethod: env.MC_RECOVERY_WEBHOOK_METHOD,
+    recoveryOfflineChecks: env.MC_RECOVERY_OFFLINE_CHECKS,
+    reportChannelId: cleanOptional(env.MINECRAFT_REPORT_CHANNEL_ID)
   },
   memory: {
     enabled: boolFromEnv(env.MEMORY_ENABLED, true),
@@ -104,6 +135,27 @@ export const config = {
   vision: {
     enabled: boolFromEnv(env.VISION_ENABLED, true),
     maxImageBytes: env.MAX_IMAGE_BYTES
+  },
+  moderation: {
+    enabled: boolFromEnv(env.MODERATION_ENABLED, true),
+    logChannelId: cleanOptional(env.MODERATION_LOG_CHANNEL_ID),
+    minTimeoutMinutes: env.MODERATION_MIN_TIMEOUT_MINUTES,
+    maxTimeoutMinutes: env.MODERATION_MAX_TIMEOUT_MINUTES,
+    ruleTimeoutMinutes: env.MODERATION_RULE_TIMEOUT_MINUTES,
+    offenseTimeoutMinutes: env.MODERATION_OFFENSE_TIMEOUT_MINUTES,
+    spamTimeoutMinutes: env.MODERATION_SPAM_TIMEOUT_MINUTES,
+    spamWindowMs: env.SPAM_BIBIAI_WINDOW_MS,
+    spamMentionLimit: env.SPAM_BIBIAI_LIMIT
+  },
+  events: {
+    path: env.EVENT_LOG_PATH,
+    retentionDays: env.EVENT_LOG_RETENTION_DAYS,
+    maxItems: env.EVENT_LOG_MAX_ITEMS
+  },
+  weeklyReport: {
+    enabled: boolFromEnv(env.WEEKLY_REPORT_ENABLED, true),
+    day: env.WEEKLY_REPORT_DAY,
+    hourUtc: env.WEEKLY_REPORT_HOUR_UTC
   },
   safety: {
     autoExecuteSafeCommands: boolFromEnv(env.AI_AUTO_EXECUTE_SAFE_COMMANDS, true),

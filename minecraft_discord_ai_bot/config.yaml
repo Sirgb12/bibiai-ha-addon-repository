@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.1.0"
+version: "1.2.0"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -37,6 +37,28 @@ options:
   max_memory_entry_length: 500
   vision_enabled: true
   max_image_bytes: 8388608
+  moderation_enabled: true
+  moderation_log_channel_id: ""
+  moderation_min_timeout_minutes: 1
+  moderation_max_timeout_minutes: 5
+  moderation_rule_timeout_minutes: 5
+  moderation_offense_timeout_minutes: 1
+  moderation_spam_timeout_minutes: 2
+  spam_bibiai_window_ms: 30000
+  spam_bibiai_limit: 4
+  event_log_path: "/data/bibiai-events.json"
+  event_log_retention_days: 60
+  event_log_max_items: 500
+  mc_monitor_enabled: true
+  mc_monitor_interval_minutes: 5
+  mc_recovery_enabled: false
+  mc_recovery_webhook_url: ""
+  mc_recovery_webhook_method: "POST"
+  mc_recovery_offline_checks: 2
+  minecraft_report_channel_id: ""
+  weekly_report_enabled: true
+  weekly_report_day: "sunday"
+  weekly_report_hour_utc: 18
   ai_auto_execute_safe_commands: true
   allow_stop_command: false
   bypass_rcon_safety: false
@@ -66,6 +88,28 @@ schema:
   max_memory_entry_length: int
   vision_enabled: bool
   max_image_bytes: int
+  moderation_enabled: bool
+  moderation_log_channel_id: str
+  moderation_min_timeout_minutes: int
+  moderation_max_timeout_minutes: int
+  moderation_rule_timeout_minutes: int
+  moderation_offense_timeout_minutes: int
+  moderation_spam_timeout_minutes: int
+  spam_bibiai_window_ms: int
+  spam_bibiai_limit: int
+  event_log_path: str
+  event_log_retention_days: int
+  event_log_max_items: int
+  mc_monitor_enabled: bool
+  mc_monitor_interval_minutes: int
+  mc_recovery_enabled: bool
+  mc_recovery_webhook_url: str
+  mc_recovery_webhook_method: list(POST|GET)
+  mc_recovery_offline_checks: int
+  minecraft_report_channel_id: str
+  weekly_report_enabled: bool
+  weekly_report_day: list(sunday|monday|tuesday|wednesday|thursday|friday|saturday)
+  weekly_report_hour_utc: int
   ai_auto_execute_safe_commands: bool
   allow_stop_command: bool
   bypass_rcon_safety: bool

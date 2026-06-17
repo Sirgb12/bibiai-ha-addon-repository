@@ -10,11 +10,15 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 
 - `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
+- `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
+- `/mc recover`: trigger the configured external recovery webhook.
 - `/mc fix issue:<choice> details:<text>`: generate an AI fix plan with buttons to run safe commands or explicitly confirm risky commands.
 - `/rcon command:<command>`: run one allowlisted RCON command as an operator.
 - `/memory add/list/remove/clear`: manage persistent BibiAI memory.
 - Mention the bot in an enabled channel to chat with it.
 - Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
+- Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
+- Minecraft monitor alerts, optional recovery webhook calls, and weekly bot-observed server reports.
 
 Regular users can ask questions and get diagnosis. Only users with one of `BOT_ADMIN_ROLE_IDS`, Administrator, or Manage Server can trigger RCON execution.
 
@@ -64,7 +68,12 @@ Gemini free-tier availability and limits are model-specific. If the bot gets quo
 4. Invite the bot with these scopes:
    - `bot`
    - `applications.commands`
-5. Give it permissions to read/send messages in your operator channel.
+5. Give it these permissions:
+   - View Channels
+   - Send Messages
+   - Read Message History
+   - Use Slash Commands
+   - Moderate Members, only if you want short timeout moderation
 
 ## Minecraft RCON Setup
 
@@ -105,6 +114,13 @@ Recommended:
 - `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
 - `VISION_ENABLED`: enables image attachment understanding. Defaults to `true`.
 - `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
+- `MODERATION_ENABLED`: enables 1-5 minute Discord timeouts for obvious configured rule breaks.
+- `MODERATION_LOG_CHANNEL_ID`: optional channel for moderation notices.
+- `MINECRAFT_REPORT_CHANNEL_ID`: optional channel for Minecraft monitor alerts and weekly reports.
+- `MC_MONITOR_ENABLED`: enables periodic Minecraft health checks.
+- `MC_RECOVERY_ENABLED`: enables webhook-based recovery attempts when the server appears offline.
+- `MC_RECOVERY_WEBHOOK_URL`: optional external URL from your host/panel/automation that restarts the server.
+- `WEEKLY_REPORT_ENABLED`: enables weekly bot-observed server reports.
 
 ## Register Commands
 
@@ -214,10 +230,54 @@ or mention the bot while attaching an image:
 
 The bot sends image bytes directly to Gemini as inline image data. Keep images below `MAX_IMAGE_BYTES`.
 
+## Moderation
+
+When `MODERATION_ENABLED=true`, BibiAI can apply short Discord communication timeouts. It ignores bots and operators, and it never kicks or bans.
+
+Default timeout lengths:
+
+- Rule breaks such as porn/NSFW content or edating: 5 minutes.
+- Spamming BibiAI: 2 minutes after 4 references within 30 seconds.
+- Directly insulting BibiAI: 1 minute.
+
+The bot needs Discord's **Moderate Members** permission and its role must be above the members it needs to timeout.
+
+## Monitoring And Recovery
+
+`MC_MONITOR_ENABLED=true` makes the bot check the Minecraft server every `MC_MONITOR_INTERVAL_MINUTES`. It reports offline/online transitions to `minecraft_report_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel.
+
+For externally hosted servers, BibiAI cannot restart the host by itself unless the host gives you a webhook or API endpoint. Put that URL in:
+
+```text
+mc_recovery_webhook_url
+```
+
+Then set:
+
+```text
+mc_recovery_enabled: true
+```
+
+After `mc_recovery_offline_checks` failed checks, BibiAI will call that webhook once for the outage. `/mc recover` lets an operator trigger it manually.
+
+## Weekly Reports
+
+Weekly reports are based on events the bot can observe: monitor offline/online transitions, recovery attempts, diagnostics requests, and moderation actions. Set `minecraft_report_channel_id` if you want reports in a specific channel.
+
+The default schedule is Sunday at 18:00 UTC:
+
+```yaml
+weekly_report_enabled: true
+weekly_report_day: "sunday"
+weekly_report_hour_utc: 18
+```
+
 ## Useful Examples
 
 ```text
 /mc status
+/mc diagnostics
+/mc recover
 /ask prompt: TPS is low, check status and do safe fixes only.
 /mc fix issue:Lag / low TPS details: Players say mobs and item drops are everywhere near spawn.
 /rcon command:save-all
@@ -230,5 +290,7 @@ For restarts, leave `ALLOW_STOP_COMMAND=false` until your server is managed by s
 - `RCON check failed`: verify `enable-rcon=true`, host, port, firewall, and password.
 - Slash commands missing: set `DISCORD_GUILD_ID`, run `npm.cmd run register:commands`, then restart Discord.
 - Mention chat ignored: enable Message Content intent in the Discord Developer Portal.
+- Timeouts do nothing: give the bot Moderate Members permission and move its Discord role above the role it should moderate.
+- Recovery does nothing: `mc_recovery_webhook_url` must be a real restart/recovery endpoint from your hosting panel or automation.
 - AI refuses a command: it is probably not allowlisted in `src/minecraft/commandPolicy.ts`.
 - `tps` or `mspt` fails: vanilla Minecraft may not support those commands. Paper/Purpur usually do.
