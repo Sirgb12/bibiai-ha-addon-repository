@@ -39,7 +39,7 @@ type PendingPlan = {
 const minecraft = new MinecraftService();
 const memory = new MemoryStore();
 const events = new EventLogStore();
-const moderation = new ModerationService();
+const moderation = new ModerationService(events);
 const agent = new GeminiMinecraftAgent(minecraft, memory);
 const pendingPlans = new Map<string, PendingPlan>();
 
@@ -86,7 +86,10 @@ client.on(Events.MessageCreate, async (message) => {
         `${moderationAction.rule}: ${moderationAction.reason}`,
         {
           userId: moderationAction.userId,
-          timeoutMinutes: moderationAction.timeoutMinutes
+          timeoutMinutes: moderationAction.timeoutMinutes,
+          severity: moderationAction.severity,
+          previousOffenses: moderationAction.previousOffenses,
+          deletedMessage: moderationAction.deletedMessage
         }
       );
       await sendModerationNotice(message, moderationAction);
@@ -511,7 +514,14 @@ async function sendModerationNotice(message: Message, action: ModerationAction):
   const channelId = config.moderation.logChannelId ?? message.channelId;
   await sendToDiscordChannel(
     channelId,
-    `**BibiAI moderation:** timed out <@${action.userId}> for ${action.timeoutMinutes} minute(s). Rule: ${action.rule}.`
+    [
+      `**BibiAI moderation:** timed out <@${action.userId}> for ${action.timeoutMinutes} minute(s).`,
+      `Rule: ${action.rule}. Severity: ${action.severity}.`,
+      action.previousOffenses > 0 ? `Previous offenses in lookback: ${action.previousOffenses}.` : undefined,
+      action.deletedMessage ? "Message deleted." : undefined
+    ]
+      .filter(Boolean)
+      .join(" ")
   );
 }
 

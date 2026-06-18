@@ -22,7 +22,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
 - Minecraft monitor alerts, optional PebbleHost/API recovery calls, and weekly bot-observed server reports.
-- Vacation mode for daily status reports, rule reminders, and basic Discord/server stewardship while the owner is away.
+- Vacation mode for stronger moderation, daily status reports, rule reminders, and basic Discord/server stewardship while the owner is away.
 
 Regular users can ask questions and get diagnosis. Only users with one of `BOT_ADMIN_ROLE_IDS`, Administrator, or Manage Server can trigger RCON execution.
 
@@ -78,6 +78,7 @@ Gemini free-tier availability and limits are model-specific. If the bot gets quo
    - Read Message History
    - Use Slash Commands
    - Moderate Members, only if you want short timeout moderation
+   - Manage Messages, only if you want BibiAI to delete rule-breaking messages during vacation mode
 
 ## Minecraft RCON Setup
 
@@ -147,6 +148,14 @@ Recommended:
 - `VACATION_AUTO_REPLY_ENABLED`: lets mentions about rules/help/admin absence get a fixed vacation-mode reply.
 - `VACATION_OWNER_NOTE`: short away message.
 - `VACATION_RULES_SUMMARY`: rules BibiAI should repeat while you are gone.
+- `VACATION_FULL_MODERATION_ENABLED`: enables stronger vacation-only moderation.
+- `VACATION_DELETE_RULEBREAKING_MESSAGES`: deletes matching rule-breaking messages when possible.
+- `VACATION_TIMEOUT_LOW_MINUTES`: low-severity timeout. Defaults to 5.
+- `VACATION_TIMEOUT_MEDIUM_MINUTES`: medium-severity timeout. Defaults to 30.
+- `VACATION_TIMEOUT_HIGH_MINUTES`: high-severity timeout. Defaults to 360.
+- `VACATION_TIMEOUT_CRITICAL_MINUTES`: critical-severity timeout. Defaults to 1440.
+- `VACATION_ESCALATE_REPEAT_OFFENSES`: increases punishment level for repeat offenders.
+- `VACATION_BLOCKED_TERMS`: comma-separated extra terms to treat as high severity.
 
 ## Register Commands
 
@@ -347,6 +356,19 @@ vacation_report_hour_utc: 18
 vacation_auto_reply_enabled: true
 vacation_owner_note: "Ben is away for about a week. BibiAI is covering basic server help and routine moderation."
 vacation_rules_summary: "No edating, no porn/NSFW, no spamming BibiAI, keep chat civil, and use /join for setup help."
+vacation_full_moderation_enabled: true
+vacation_delete_rulebreaking_messages: true
+vacation_timeout_low_minutes: 5
+vacation_timeout_medium_minutes: 30
+vacation_timeout_high_minutes: 360
+vacation_timeout_critical_minutes: 1440
+vacation_max_timeout_minutes: 1440
+vacation_escalate_repeat_offenses: true
+vacation_repeat_lookback_days: 7
+vacation_rapid_spam_window_ms: 15000
+vacation_rapid_spam_limit: 8
+vacation_duplicate_spam_limit: 4
+vacation_blocked_terms: ""
 ```
 
 Commands:
@@ -357,6 +379,15 @@ Commands:
 ```
 
 While vacation mode is enabled, mentioning BibiAI with questions like "who is in charge?", "what are the rules?", "where is Ben?", or "I need help" returns a fixed vacation-mode answer without spending an AI request. Daily reports summarize Minecraft status, moderation actions, offline alerts, recovery attempts, and diagnostics requests.
+
+Vacation moderation severity:
+
+- Low: direct insults at BibiAI or mild harassment. Default timeout: 5 minutes.
+- Medium: edating, duplicate spam, rapid spam, or repeated BibiAI spam. Default timeout: 30 minutes.
+- High: porn/NSFW, scam bait, suspicious gift links, or configured blocked terms. Default timeout: 6 hours.
+- Critical: threats, doxxing, DDoS language, or severe harassment. Default timeout: 24 hours.
+
+Repeat offenders are escalated within the configured lookback window. BibiAI does not automatically ban people; it uses reversible timeouts and logs what it did.
 
 ## Weekly Reports
 

@@ -115,6 +115,19 @@ const envSchema = z.object({
     .string()
     .max(1000)
     .default("No edating, no porn/NSFW, no spamming BibiAI, keep chat civil, and use /join for setup help."),
+  VACATION_FULL_MODERATION_ENABLED: z.string().optional(),
+  VACATION_DELETE_RULEBREAKING_MESSAGES: z.string().optional(),
+  VACATION_TIMEOUT_LOW_MINUTES: z.coerce.number().int().min(1).max(10080).default(5),
+  VACATION_TIMEOUT_MEDIUM_MINUTES: z.coerce.number().int().min(1).max(10080).default(30),
+  VACATION_TIMEOUT_HIGH_MINUTES: z.coerce.number().int().min(1).max(10080).default(360),
+  VACATION_TIMEOUT_CRITICAL_MINUTES: z.coerce.number().int().min(1).max(10080).default(1440),
+  VACATION_MAX_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(10080).default(1440),
+  VACATION_ESCALATE_REPEAT_OFFENSES: z.string().optional(),
+  VACATION_REPEAT_LOOKBACK_DAYS: z.coerce.number().int().min(1).max(30).default(7),
+  VACATION_RAPID_SPAM_WINDOW_MS: z.coerce.number().int().min(5000).max(300000).default(15000),
+  VACATION_RAPID_SPAM_LIMIT: z.coerce.number().int().min(3).max(30).default(8),
+  VACATION_DUPLICATE_SPAM_LIMIT: z.coerce.number().int().min(2).max(20).default(4),
+  VACATION_BLOCKED_TERMS: z.string().optional(),
   MINECRAFT_REPORT_CHANNEL_ID: z.string().optional(),
   WEEKLY_REPORT_ENABLED: z.string().optional(),
   WEEKLY_REPORT_DAY: z
@@ -191,6 +204,21 @@ export const config = {
     autoReplyEnabled: boolFromEnv(env.VACATION_AUTO_REPLY_ENABLED, true),
     ownerNote: env.VACATION_OWNER_NOTE,
     rulesSummary: env.VACATION_RULES_SUMMARY
+  },
+  vacationModeration: {
+    enabled: boolFromEnv(env.VACATION_FULL_MODERATION_ENABLED, true),
+    deleteRulebreakingMessages: boolFromEnv(env.VACATION_DELETE_RULEBREAKING_MESSAGES, true),
+    lowTimeoutMinutes: env.VACATION_TIMEOUT_LOW_MINUTES,
+    mediumTimeoutMinutes: env.VACATION_TIMEOUT_MEDIUM_MINUTES,
+    highTimeoutMinutes: env.VACATION_TIMEOUT_HIGH_MINUTES,
+    criticalTimeoutMinutes: env.VACATION_TIMEOUT_CRITICAL_MINUTES,
+    maxTimeoutMinutes: env.VACATION_MAX_TIMEOUT_MINUTES,
+    escalateRepeatOffenses: boolFromEnv(env.VACATION_ESCALATE_REPEAT_OFFENSES, true),
+    repeatLookbackDays: env.VACATION_REPEAT_LOOKBACK_DAYS,
+    spamWindowMs: env.VACATION_RAPID_SPAM_WINDOW_MS,
+    rapidSpamLimit: env.VACATION_RAPID_SPAM_LIMIT,
+    duplicateSpamLimit: env.VACATION_DUPLICATE_SPAM_LIMIT,
+    blockedTerms: csv(env.VACATION_BLOCKED_TERMS)
   },
   memory: {
     enabled: boolFromEnv(env.MEMORY_ENABLED, true),

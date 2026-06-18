@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.2.5"
+version: "1.2.6"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -79,6 +79,19 @@ options:
   vacation_auto_reply_enabled: true
   vacation_owner_note: "Ben is away for about a week. BibiAI is covering basic server help and routine moderation."
   vacation_rules_summary: "No edating, no porn/NSFW, no spamming BibiAI, keep chat civil, and use /join for setup help."
+  vacation_full_moderation_enabled: true
+  vacation_delete_rulebreaking_messages: true
+  vacation_timeout_low_minutes: 5
+  vacation_timeout_medium_minutes: 30
+  vacation_timeout_high_minutes: 360
+  vacation_timeout_critical_minutes: 1440
+  vacation_max_timeout_minutes: 1440
+  vacation_escalate_repeat_offenses: true
+  vacation_repeat_lookback_days: 7
+  vacation_rapid_spam_window_ms: 15000
+  vacation_rapid_spam_limit: 8
+  vacation_duplicate_spam_limit: 4
+  vacation_blocked_terms: ""
   minecraft_report_channel_id: ""
   weekly_report_enabled: true
   weekly_report_day: "sunday"
@@ -154,6 +167,19 @@ schema:
   vacation_auto_reply_enabled: bool
   vacation_owner_note: str
   vacation_rules_summary: str
+  vacation_full_moderation_enabled: bool
+  vacation_delete_rulebreaking_messages: bool
+  vacation_timeout_low_minutes: int
+  vacation_timeout_medium_minutes: int
+  vacation_timeout_high_minutes: int
+  vacation_timeout_critical_minutes: int
+  vacation_max_timeout_minutes: int
+  vacation_escalate_repeat_offenses: bool
+  vacation_repeat_lookback_days: int
+  vacation_rapid_spam_window_ms: int
+  vacation_rapid_spam_limit: int
+  vacation_duplicate_spam_limit: int
+  vacation_blocked_terms: str
   minecraft_report_channel_id: str
   weekly_report_enabled: bool
   weekly_report_day: list(sunday|monday|tuesday|wednesday|thursday|friday|saturday)

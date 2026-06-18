@@ -52,6 +52,9 @@ export class VacationManager {
         returnLine(),
         "",
         `Rules while Ben is away: ${config.vacation.rulesSummary}`,
+        config.vacationModeration.enabled
+          ? "Vacation moderation is active: obvious rule breaks may be deleted and timed out based on severity."
+          : undefined,
         "",
         "Useful commands:",
         "- `/join` for the IP, modpack links, and install steps.",
