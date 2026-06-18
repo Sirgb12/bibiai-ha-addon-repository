@@ -58,6 +58,9 @@ const envSchema = z.object({
   SHOLOM_AUDIO_PATH: z.string().default("/share/bibiai_sholom.mp3"),
   SHOLOM_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
   SHOLOM_LEAVE_AFTER_SECONDS: z.coerce.number().int().min(0).max(300).default(10),
+  SHOLOM_RANDOM_ENABLED: z.string().optional(),
+  SHOLOM_RANDOM_MIN_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
+  SHOLOM_RANDOM_MAX_MINUTES: z.coerce.number().int().min(1).max(1440).default(180),
   MC_SERVER_NAME: z.string().default("Minecraft"),
   MC_RCON_HOST: z.string().default("127.0.0.1"),
   MC_RCON_PORT: z.coerce.number().int().min(1).max(65535).default(25575),
@@ -178,7 +181,10 @@ export const config = {
     trigger: cleanOptional(env.SHOLOM_TRIGGER) ?? "sholom",
     audioPath: cleanOptional(env.SHOLOM_AUDIO_PATH) ?? "/share/bibiai_sholom.mp3",
     cooldownSeconds: env.SHOLOM_COOLDOWN_SECONDS,
-    leaveAfterSeconds: env.SHOLOM_LEAVE_AFTER_SECONDS
+    leaveAfterSeconds: env.SHOLOM_LEAVE_AFTER_SECONDS,
+    randomEnabled: boolFromEnv(env.SHOLOM_RANDOM_ENABLED, false),
+    randomMinMinutes: env.SHOLOM_RANDOM_MIN_MINUTES,
+    randomMaxMinutes: env.SHOLOM_RANDOM_MAX_MINUTES
   },
   minecraft: {
     serverName: env.MC_SERVER_NAME,

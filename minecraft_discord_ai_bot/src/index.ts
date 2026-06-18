@@ -81,6 +81,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   minecraftMonitor.start();
   weeklyReporter.start();
   vacationManager.start();
+  sholomPlayer.startRandom(readyClient);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {

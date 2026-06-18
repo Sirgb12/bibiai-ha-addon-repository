@@ -123,6 +123,9 @@ Recommended:
 - `SHOLOM_AUDIO_PATH`: MP3 file path. Defaults to `/share/bibiai_sholom.mp3`.
 - `SHOLOM_COOLDOWN_SECONDS`: cooldown between plays. Defaults to 120 seconds.
 - `SHOLOM_LEAVE_AFTER_SECONDS`: seconds to wait after the song before leaving voice. Defaults to 10.
+- `SHOLOM_RANDOM_ENABLED`: enables random voice-channel MP3 visits.
+- `SHOLOM_RANDOM_MIN_MINUTES`: shortest random wait between attempts. Defaults to 30.
+- `SHOLOM_RANDOM_MAX_MINUTES`: longest random wait between attempts. Defaults to 180.
 - `MC_LOG_PATH`: path to `logs/latest.log` for better AI diagnosis.
 - `MEMORY_ENABLED`: enables persistent memory. Defaults to `true`.
 - `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
@@ -294,6 +297,8 @@ Put your MP3 file here in Home Assistant:
 
 Then say `sholom` in an enabled text channel while you are already connected to a voice channel. BibiAI joins that voice channel, plays the MP3, waits briefly, and leaves.
 
+If random mode is enabled, BibiAI waits a random amount of time, picks an occupied voice channel where it has Connect/Speak permission, plays the same MP3, then schedules the next random attempt. It skips empty voice channels.
+
 Home Assistant example:
 
 ```yaml
@@ -302,6 +307,9 @@ sholom_trigger: "sholom"
 sholom_audio_path: "/share/bibiai_sholom.mp3"
 sholom_cooldown_seconds: 120
 sholom_leave_after_seconds: 10
+sholom_random_enabled: true
+sholom_random_min_minutes: 30
+sholom_random_max_minutes: 180
 ```
 
 BibiAI needs Discord's **Connect** and **Speak** permissions in the voice channel. The add-on includes `ffmpeg` for MP3 playback.

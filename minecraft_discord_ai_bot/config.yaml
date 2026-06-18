@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.3.1"
+version: "1.3.2"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -26,6 +26,9 @@ options:
   sholom_audio_path: "/share/bibiai_sholom.mp3"
   sholom_cooldown_seconds: 120
   sholom_leave_after_seconds: 10
+  sholom_random_enabled: false
+  sholom_random_min_minutes: 30
+  sholom_random_max_minutes: 180
   gemini_api_key: ""
   gemini_model: "gemini-3.5-flash"
   mc_server_name: "Survival"
@@ -131,6 +134,9 @@ schema:
   sholom_audio_path: str
   sholom_cooldown_seconds: int
   sholom_leave_after_seconds: int
+  sholom_random_enabled: bool
+  sholom_random_min_minutes: int
+  sholom_random_max_minutes: int
   gemini_api_key: str
   gemini_model: str
   mc_server_name: str
