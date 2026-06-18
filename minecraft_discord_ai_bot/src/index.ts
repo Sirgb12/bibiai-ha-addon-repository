@@ -25,6 +25,7 @@ import { MinecraftMonitor } from "./minecraft/MinecraftMonitor.js";
 import { MinecraftService } from "./minecraft/MinecraftService.js";
 import { formatJoinInfo, looksLikeJoinHelpRequest } from "./onboarding/JoinInfo.js";
 import { WeeklyReporter } from "./reports/WeeklyReporter.js";
+import { evaluateSnitchReport, SnitchEvaluation, SnitchHistoryItem } from "./snitch/SnitchEvaluator.js";
 import { splitDiscordText, truncate } from "./util/text.js";
 import { VacationManager } from "./vacation/VacationManager.js";
 
@@ -34,6 +35,12 @@ type PendingPlan = {
   title: string;
   commands: FixPlan["commands"];
   createdAt: number;
+};
+
+type SnitchPunishmentResult = {
+  applied: boolean;
+  timeoutMinutes?: number;
+  skippedReason?: string;
 };
 
 const minecraft = new MinecraftService();
@@ -423,7 +430,17 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
     return;
   }
 
-  const punishment = await applySnitchPunishment(interaction, targetMember, reason);
+  const previousReports = await recentSnitchReportsForTarget(targetUser.id);
+  const evaluation = evaluateSnitchReport({
+    reason,
+    evidence,
+    previousReports,
+    minTimeoutMinutes: config.snitching.minTimeoutMinutes,
+    defaultTimeoutMinutes: config.snitching.timeoutMinutes,
+    maxTimeoutMinutes: config.snitching.maxTimeoutMinutes,
+    escalateRepeatReports: config.snitching.escalateRepeatReports
+  });
+  const punishment = await applySnitchPunishment(interaction, targetMember, reason, evaluation);
   rememberSnitchCooldown(interaction.user.id);
 
   await events.record(
@@ -437,6 +454,13 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
       timeoutApplied: punishment.applied,
       timeoutMinutes: punishment.timeoutMinutes,
       skippedReason: punishment.skippedReason,
+      severity: evaluation.severity,
+      baseSeverity: evaluation.baseSeverity,
+      previousReportCount: evaluation.previousReportCount,
+      matchedSignals: evaluation.matchedSignals,
+      repeatEscalated: evaluation.repeatEscalated,
+      recentReasons: evaluation.recentReasons,
+      explanation: evaluation.explanation,
       channelId
     }
   );
@@ -448,11 +472,12 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
     targetTag: targetUser.tag,
     reason,
     evidence,
+    evaluation,
     punishment
   });
 
   const confirmation = punishment.applied
-    ? `Snitch accepted. <@${targetUser.id}> was timed out for ${punishment.timeoutMinutes} minute(s).`
+    ? `Snitch accepted. <@${targetUser.id}> was timed out for ${punishment.timeoutMinutes} minute(s). Severity: ${evaluation.severity}. ${evaluation.explanation}`
     : `Snitch filed. No timeout was applied: ${punishment.skippedReason}`;
 
   await interaction.editReply(
@@ -463,8 +488,9 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
 async function applySnitchPunishment(
   interaction: ChatInputCommandInteraction,
   targetMember: GuildMember,
-  reason: string
-): Promise<{ applied: boolean; timeoutMinutes?: number; skippedReason?: string }> {
+  reason: string,
+  evaluation: SnitchEvaluation
+): Promise<SnitchPunishmentResult> {
   if (!config.snitching.autoPunishEnabled) {
     return { applied: false, skippedReason: "snitch auto-punishment is disabled" };
   }
@@ -482,10 +508,10 @@ async function applySnitchPunishment(
     return { applied: false, skippedReason: "BibiAI's role is not high enough to moderate that user" };
   }
 
-  const timeoutMinutes = config.snitching.timeoutMinutes;
+  const timeoutMinutes = evaluation.timeoutMinutes;
   await targetMember.timeout(
     timeoutMinutes * 60 * 1000,
-    truncate(`BibiAI snitch report by ${interaction.user.tag}: ${reason}`, 500)
+    truncate(`BibiAI snitch report by ${interaction.user.tag} (${evaluation.severity}): ${reason}`, 500)
   );
 
   return { applied: true, timeoutMinutes };
@@ -663,6 +689,20 @@ async function formatModerationCheck(interaction: ChatInputCommandInteraction, u
   return lines.join("\n");
 }
 
+async function recentSnitchReportsForTarget(userId: string): Promise<SnitchHistoryItem[]> {
+  const since = Date.now() - config.snitching.repeatLookbackDays * 24 * 60 * 60 * 1000;
+  const recent = await events.since(since);
+
+  return recent
+    .filter((event) => event.type === "snitch_report" && event.metadata?.targetUserId === userId)
+    .map((event) => ({
+      createdAt: event.createdAt,
+      reason: typeof event.details === "string" ? event.details : event.title,
+      evidence: typeof event.metadata?.evidence === "string" ? event.metadata.evidence : undefined,
+      severity: typeof event.metadata?.severity === "string" ? event.metadata.severity : undefined
+    }));
+}
+
 async function editWithChunks(interaction: ChatInputCommandInteraction, text: string): Promise<void> {
   const chunks = splitDiscordText(text);
   await interaction.editReply(chunks[0] ?? "(empty response)");
@@ -705,7 +745,8 @@ async function sendSnitchNotice(
     targetTag: string;
     reason: string;
     evidence?: string;
-    punishment: { applied: boolean; timeoutMinutes?: number; skippedReason?: string };
+    evaluation: SnitchEvaluation;
+    punishment: SnitchPunishmentResult;
   }
 ): Promise<boolean> {
   return sendToDiscordChannel(
@@ -716,6 +757,12 @@ async function sendSnitchNotice(
       `Reporter: <@${report.reporterId}> (${report.reporterTag}, ${report.reporterId})`,
       `Reason: ${truncate(report.reason, 700)}`,
       report.evidence ? `Evidence: ${truncate(report.evidence, 300)}` : undefined,
+      `Severity: ${report.evaluation.severity}. ${report.evaluation.explanation}`,
+      `Matched: ${report.evaluation.matchedSignals.join(", ")}`,
+      `Previous snitch reports in lookback: ${report.evaluation.previousReportCount}`,
+      report.evaluation.recentReasons.length > 0
+        ? `Remembered reasons: ${report.evaluation.recentReasons.map((reason) => truncate(reason, 120)).join(" | ")}`
+        : undefined,
       report.punishment.applied
         ? `Action: timed out for ${report.punishment.timeoutMinutes} minute(s).`
         : `Action: no timeout. Reason: ${report.punishment.skippedReason}.`

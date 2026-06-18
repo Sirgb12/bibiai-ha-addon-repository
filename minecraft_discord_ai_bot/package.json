@@ -1,6 +1,6 @@
 {
   "name": "minecraft-discord-ai-bot",
-  "version": "1.2.8",
+  "version": "1.2.9",
   "private": true,
   "type": "module",
   "description": "AI-powered Discord bot for diagnosing and safely fixing common Minecraft server issues over RCON.",

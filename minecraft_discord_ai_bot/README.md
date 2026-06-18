@@ -10,7 +10,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 
 - `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
 - `/join`: show the server IP, modpack link, and install steps for new players.
-- `/snitch user:<user> reason:<text>`: let a member report someone to BibiAI. When enabled, BibiAI logs the report and applies a short timeout if it can safely moderate that user.
+- `/snitch user:<user> reason:<text>`: let a member report someone to BibiAI. BibiAI remembers report reasons/evidence, classifies severity, and applies a short timeout if it can safely moderate that user.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
 - `/mc start`: start the server through the configured PebbleHost panel API.
@@ -124,8 +124,12 @@ Recommended:
 - `SNITCHING_ENABLED`: enables `/snitch` reports.
 - `SNITCH_CHANNEL_ID`: optional channel for snitch reports. Falls back to moderation/report channels.
 - `SNITCH_AUTO_PUNISH_ENABLED`: lets `/snitch` apply a short timeout when BibiAI has permission.
-- `SNITCH_TIMEOUT_MINUTES`: timeout length for snitch reports. Defaults to 3 minutes.
+- `SNITCH_MIN_TIMEOUT_MINUTES`: low-severity snitch timeout. Defaults to 1 minute.
+- `SNITCH_TIMEOUT_MINUTES`: default/medium snitch timeout. Defaults to 3 minutes.
+- `SNITCH_MAX_TIMEOUT_MINUTES`: maximum snitch timeout. Defaults to 5 minutes.
 - `SNITCH_COOLDOWN_SECONDS`: per-user snitch cooldown. Defaults to 300 seconds.
+- `SNITCH_ESCALATE_REPEAT_REPORTS`: increases snitch severity for repeat reports against the same user.
+- `SNITCH_REPEAT_LOOKBACK_DAYS`: how far back BibiAI remembers snitch reports for escalation.
 - `MODERATION_ENABLED`: enables 1-5 minute Discord timeouts for obvious configured rule breaks.
 - `MODERATION_LOG_CHANNEL_ID`: optional channel for moderation notices.
 - `MINECRAFT_REPORT_CHANNEL_ID`: optional channel for Minecraft monitor alerts and weekly reports.
@@ -280,7 +284,18 @@ Use `/snitch` when a member needs to report someone while staff are away:
 /snitch user:@Somebody reason:spamming BibiAI evidence:https://discord.com/channels/...
 ```
 
-If `snitch_auto_punish_enabled=true`, BibiAI applies the configured short timeout. It will not punish bots, itself, operators/admins, or anyone above its Discord role. Every snitch report is written to the event log and sent to `snitch_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel.
+If `snitch_auto_punish_enabled=true`, BibiAI reads the reason and evidence, classifies the report as low/medium/high/critical, then applies a short timeout inside the configured min/max range. It will not punish bots, itself, operators/admins, or anyone above its Discord role.
+
+Every snitch report is written to the persistent event log at `/data/bibiai-events.json`. BibiAI uses that stored history to remember what users were snitched on for and can escalate repeat reports within `snitch_repeat_lookback_days`.
+
+Default severity behavior:
+
+- Low: mild insults, nuisance behavior, or general rule reports. Default timeout: 1 minute.
+- Medium: spam, edating, harassment, griefing, or repeated disruption. Default timeout: 3 minutes.
+- High: porn/NSFW, scam/phishing, or explicit-content reports. Default timeout: 4 minutes with the default range.
+- Critical: doxxing, DDoS, serious threats, or personal-info leak language. Default timeout: 5 minutes.
+
+Snitch reports are also sent to `snitch_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel. The report includes the chosen severity, matched reason signal, previous snitch count, remembered recent reasons, and punishment result.
 
 Home Assistant example:
 
@@ -290,8 +305,12 @@ snitch_channel_id: "123456789012345678"
 snitch_allow_user_reports: true
 snitch_report_moderation_events: true
 snitch_auto_punish_enabled: true
+snitch_min_timeout_minutes: 1
 snitch_timeout_minutes: 3
+snitch_max_timeout_minutes: 5
 snitch_cooldown_seconds: 300
+snitch_escalate_repeat_reports: true
+snitch_repeat_lookback_days: 7
 ```
 
 ## New Player Join Help

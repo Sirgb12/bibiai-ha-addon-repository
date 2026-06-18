@@ -72,8 +72,12 @@ const envSchema = z.object({
   SNITCH_ALLOW_USER_REPORTS: z.string().optional(),
   SNITCH_REPORT_MODERATION_EVENTS: z.string().optional(),
   SNITCH_AUTO_PUNISH_ENABLED: z.string().optional(),
+  SNITCH_MIN_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(1),
   SNITCH_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(3),
+  SNITCH_MAX_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(5),
   SNITCH_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(300),
+  SNITCH_ESCALATE_REPEAT_REPORTS: z.string().optional(),
+  SNITCH_REPEAT_LOOKBACK_DAYS: z.coerce.number().int().min(1).max(30).default(7),
   MODERATION_ENABLED: z.string().optional(),
   MODERATION_LOG_CHANNEL_ID: z.string().optional(),
   MODERATION_MIN_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(1),
@@ -243,8 +247,12 @@ export const config = {
     allowUserReports: boolFromEnv(env.SNITCH_ALLOW_USER_REPORTS, true),
     reportModerationEvents: boolFromEnv(env.SNITCH_REPORT_MODERATION_EVENTS, true),
     autoPunishEnabled: boolFromEnv(env.SNITCH_AUTO_PUNISH_ENABLED, true),
+    minTimeoutMinutes: env.SNITCH_MIN_TIMEOUT_MINUTES,
     timeoutMinutes: env.SNITCH_TIMEOUT_MINUTES,
-    cooldownSeconds: env.SNITCH_COOLDOWN_SECONDS
+    maxTimeoutMinutes: env.SNITCH_MAX_TIMEOUT_MINUTES,
+    cooldownSeconds: env.SNITCH_COOLDOWN_SECONDS,
+    escalateRepeatReports: boolFromEnv(env.SNITCH_ESCALATE_REPEAT_REPORTS, true),
+    repeatLookbackDays: env.SNITCH_REPEAT_LOOKBACK_DAYS
   },
   moderation: {
     enabled: boolFromEnv(env.MODERATION_ENABLED, true),
