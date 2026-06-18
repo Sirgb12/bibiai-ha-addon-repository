@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.2.3"
+version: "1.2.4"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -60,14 +60,16 @@ options:
   pebblehost_server_id: ""
   pebblehost_recovery_signal: "start"
   pebblehost_api_base_url: "https://panel.pebblehost.com"
-  join_server_address: ""
-  join_modpack_name: "Server modpack"
+  join_server_address: "54.39.123.115:25579"
+  join_modpack_name: "Honda Fit SMP modpack"
   join_modpack_url: ""
-  join_modpack_loader: "CurseForge"
+  join_modrinth_modpack_url: "https://drive.google.com/file/d/1n0NX1gIwkfNeogzVpRjRp1naetc_Rsl7/view?usp=sharing"
+  join_curseforge_modpack_url: "https://drive.google.com/file/d/1n7ywFxEVsAgdPUDFNg4V9G9GYem-6jxd/view?usp=drive_link"
+  join_modpack_loader: "CurseForge and Modrinth"
   join_minecraft_version: ""
   join_install_guide_url: ""
   join_help_channel_id: ""
-  join_extra_notes: ""
+  join_extra_notes: "CurseForge players must also download the Origins Legacy Classes mod from Modrinth's website and drag it into the pack's mods folder."
   join_auto_reply_enabled: true
   minecraft_report_channel_id: ""
   weekly_report_enabled: true
@@ -128,6 +130,8 @@ schema:
   join_server_address: str
   join_modpack_name: str
   join_modpack_url: str
+  join_modrinth_modpack_url: str
+  join_curseforge_modpack_url: str
   join_modpack_loader: str
   join_minecraft_version: str
   join_install_guide_url: str

@@ -21,6 +21,12 @@ const cleanOptional = (value: string | undefined): string | undefined => {
 
 const defaultPersonaStyle = "Clear, practical Minecraft server operator. Be direct, helpful, and calm.";
 const defaultPersonaFile = "/share/bibiai_persona.txt";
+const defaultJoinServerAddress = "54.39.123.115:25579";
+const defaultJoinModpackName = "Honda Fit SMP modpack";
+const defaultJoinModrinthUrl = "https://drive.google.com/file/d/1n0NX1gIwkfNeogzVpRjRp1naetc_Rsl7/view?usp=sharing";
+const defaultJoinCurseForgeUrl = "https://drive.google.com/file/d/1n7ywFxEVsAgdPUDFNg4V9G9GYem-6jxd/view?usp=drive_link";
+const defaultJoinExtraNotes =
+  "CurseForge players must also download the Origins Legacy Classes mod from Modrinth's website and drag it into the pack's mods folder.";
 
 const loadPersonaStyle = (style: string | undefined, filePath: string | undefined): string => {
   const fileCandidates = [cleanOptional(filePath), defaultPersonaFile].filter(
@@ -85,9 +91,11 @@ const envSchema = z.object({
   PEBBLEHOST_RECOVERY_SIGNAL: z.enum(["start", "restart"]).default("start"),
   PEBBLEHOST_API_BASE_URL: z.string().default("https://panel.pebblehost.com"),
   JOIN_SERVER_ADDRESS: z.string().optional(),
-  JOIN_MODPACK_NAME: z.string().default("Server modpack"),
+  JOIN_MODPACK_NAME: z.string().default(defaultJoinModpackName),
   JOIN_MODPACK_URL: z.string().optional(),
-  JOIN_MODPACK_LOADER: z.string().default("CurseForge"),
+  JOIN_MODRINTH_MODPACK_URL: z.string().optional(),
+  JOIN_CURSEFORGE_MODPACK_URL: z.string().optional(),
+  JOIN_MODPACK_LOADER: z.string().default("CurseForge and Modrinth"),
   JOIN_MINECRAFT_VERSION: z.string().optional(),
   JOIN_INSTALL_GUIDE_URL: z.string().optional(),
   JOIN_HELP_CHANNEL_ID: z.string().optional(),
@@ -148,14 +156,16 @@ export const config = {
     apiBaseUrl: env.PEBBLEHOST_API_BASE_URL
   },
   onboarding: {
-    serverAddress: cleanOptional(env.JOIN_SERVER_ADDRESS),
-    modpackName: cleanOptional(env.JOIN_MODPACK_NAME) ?? "Server modpack",
+    serverAddress: cleanOptional(env.JOIN_SERVER_ADDRESS) ?? defaultJoinServerAddress,
+    modpackName: cleanOptional(env.JOIN_MODPACK_NAME) ?? defaultJoinModpackName,
     modpackUrl: cleanOptional(env.JOIN_MODPACK_URL),
-    modpackLoader: cleanOptional(env.JOIN_MODPACK_LOADER) ?? "CurseForge",
+    modrinthModpackUrl: cleanOptional(env.JOIN_MODRINTH_MODPACK_URL) ?? defaultJoinModrinthUrl,
+    curseforgeModpackUrl: cleanOptional(env.JOIN_CURSEFORGE_MODPACK_URL) ?? defaultJoinCurseForgeUrl,
+    modpackLoader: cleanOptional(env.JOIN_MODPACK_LOADER) ?? "CurseForge and Modrinth",
     minecraftVersion: cleanOptional(env.JOIN_MINECRAFT_VERSION),
     installGuideUrl: cleanOptional(env.JOIN_INSTALL_GUIDE_URL),
     helpChannelId: cleanOptional(env.JOIN_HELP_CHANNEL_ID),
-    extraNotes: cleanOptional(env.JOIN_EXTRA_NOTES),
+    extraNotes: cleanOptional(env.JOIN_EXTRA_NOTES) ?? defaultJoinExtraNotes,
     autoReplyEnabled: boolFromEnv(env.JOIN_AUTO_REPLY_ENABLED, true)
   },
   memory: {

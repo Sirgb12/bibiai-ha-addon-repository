@@ -129,8 +129,10 @@ Recommended:
 - `WEEKLY_REPORT_ENABLED`: enables weekly bot-observed server reports.
 - `JOIN_SERVER_ADDRESS`: public Minecraft address shown to new players.
 - `JOIN_MODPACK_NAME`: display name for the modpack.
-- `JOIN_MODPACK_URL`: download/install link for the modpack.
-- `JOIN_MODPACK_LOADER`: launcher/app name, such as CurseForge, Modrinth, or Prism Launcher.
+- `JOIN_MODPACK_URL`: optional fallback download/install link for the modpack.
+- `JOIN_MODRINTH_MODPACK_URL`: Modrinth pack download/import link.
+- `JOIN_CURSEFORGE_MODPACK_URL`: CurseForge pack download/import link.
+- `JOIN_MODPACK_LOADER`: launcher/app names shown to players.
 - `JOIN_MINECRAFT_VERSION`: optional required Minecraft version.
 - `JOIN_INSTALL_GUIDE_URL`: optional longer install guide link.
 - `JOIN_HELP_CHANNEL_ID`: optional Discord channel ID for install help.
@@ -251,18 +253,22 @@ Use `/join` to show new players the configured server address, modpack, and inst
 Set these in the Home Assistant add-on config:
 
 ```yaml
-join_server_address: "play.example.com"
-join_modpack_name: "Honda Fit SMP Modpack"
-join_modpack_url: "https://example.com/modpack"
-join_modpack_loader: "CurseForge"
-join_minecraft_version: "1.20.1"
-join_install_guide_url: "https://example.com/install-guide"
+join_server_address: "54.39.123.115:25579"
+join_modpack_name: "Honda Fit SMP modpack"
+join_modpack_url: ""
+join_modrinth_modpack_url: "https://drive.google.com/file/d/1n0NX1gIwkfNeogzVpRjRp1naetc_Rsl7/view?usp=sharing"
+join_curseforge_modpack_url: "https://drive.google.com/file/d/1n7ywFxEVsAgdPUDFNg4V9G9GYem-6jxd/view?usp=drive_link"
+join_modpack_loader: "CurseForge and Modrinth"
+join_minecraft_version: ""
+join_install_guide_url: ""
 join_help_channel_id: "123456789012345678"
-join_extra_notes: "Allocate at least 6 GB RAM if your launcher asks."
+join_extra_notes: "CurseForge players must also download the Origins Legacy Classes mod from Modrinth's website and drag it into the pack's mods folder."
 join_auto_reply_enabled: true
 ```
 
 When `join_auto_reply_enabled=true`, mentioning BibiAI with questions like "how do I join?", "what is the IP?", or "where is the modpack?" returns the same guide without spending an AI request.
+
+The `/join` guide includes Modrinth import steps, CurseForge import steps, the server IP, both modpack links, and the extra CurseForge step for Origins Legacy Classes.
 
 ## Moderation
 
