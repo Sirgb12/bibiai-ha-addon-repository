@@ -43,6 +43,14 @@ type SnitchPunishmentResult = {
   skippedReason?: string;
 };
 
+type SnitchEvidenceFile = {
+  url: string;
+  name: string;
+  contentType: string;
+  size: number;
+  kind: "image" | "video";
+};
+
 const minecraft = new MinecraftService();
 const memory = new MemoryStore();
 const events = new EventLogStore();
@@ -124,18 +132,18 @@ client.on(Events.MessageCreate, async (message) => {
       .replace(new RegExp(`<@!?${client.user.id}>`, "g"), "")
       .trim();
 
-    const imageParts = await imagePartsFromAttachments([...message.attachments.values()]);
+    const mediaParts = await mediaPartsFromAttachments([...message.attachments.values()]);
 
-    if (!prompt && imageParts.length === 0) {
+    if (!prompt && mediaParts.length === 0) {
       await message.reply("Tell me what is broken on the server and I will take a look.");
       return;
     }
 
     await message.channel.sendTyping();
-    const answer = await agent.ask(prompt || "Describe the attached image.", {
+    const answer = await agent.ask(prompt || "Describe the attached media.", {
       allowCommandExecution: hasOperatorAccess(message.member),
       userLabel: userLabel(message.author.id, message.author.username),
-      imageParts
+      mediaParts
     });
     await replyInChunks(message, answer);
   } catch (error) {
@@ -155,12 +163,15 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
   if (interaction.commandName === "ask") {
     await interaction.deferReply();
     const prompt = interaction.options.getString("prompt", true);
-    const attachment = interaction.options.getAttachment("image");
-    const imageParts = await imagePartsFromAttachments(attachment ? [attachment] : []);
+    const attachments = [
+      interaction.options.getAttachment("image"),
+      interaction.options.getAttachment("video")
+    ].filter(isPresent);
+    const mediaParts = await mediaPartsFromAttachments(attachments);
     const answer = await agent.ask(prompt, {
       allowCommandExecution: hasOperatorAccess(interaction.member),
       userLabel: userLabel(interaction.user.id, interaction.user.username),
-      imageParts
+      mediaParts
     });
     await editWithChunks(interaction, answer);
     return;
@@ -400,9 +411,23 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
   const targetUser = interaction.options.getUser("user", true);
   const reason = interaction.options.getString("reason", true).trim();
   const evidence = interaction.options.getString("evidence")?.trim();
+  const evidenceAttachments = [
+    interaction.options.getAttachment("evidence_file"),
+    interaction.options.getAttachment("evidence_file_2"),
+    interaction.options.getAttachment("evidence_file_3")
+  ].filter(isPresent);
 
   if (!reason) {
     await interaction.reply({ content: "Give me a reason. Empty snitching is just paperwork.", ephemeral: true });
+    return;
+  }
+
+  const unsupportedEvidence = evidenceAttachments.find((attachment) => !isSupportedMediaAttachment(attachment));
+  if (unsupportedEvidence) {
+    await interaction.reply({
+      content: `Evidence attachment ${unsupportedEvidence.name ?? unsupportedEvidence.url} is not a supported image or video file.`,
+      ephemeral: true
+    });
     return;
   }
 
@@ -430,10 +455,13 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
     return;
   }
 
+  const evidenceFiles = evidenceFilesFromAttachments(evidenceAttachments);
+  const evidenceMediaSummary = await summarizeSnitchEvidenceMedia(reason, evidence, evidenceAttachments);
+  const evaluationEvidence = formatEvidenceForEvaluation(evidence, evidenceFiles, evidenceMediaSummary);
   const previousReports = await recentSnitchReportsForTarget(targetUser.id);
   const evaluation = evaluateSnitchReport({
     reason,
-    evidence,
+    evidence: evaluationEvidence,
     previousReports,
     minTimeoutMinutes: config.snitching.minTimeoutMinutes,
     defaultTimeoutMinutes: config.snitching.timeoutMinutes,
@@ -451,6 +479,9 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
       reporterId: interaction.user.id,
       targetUserId: targetUser.id,
       evidence,
+      evidenceFiles,
+      evidenceMediaSummary,
+      evaluationEvidence,
       timeoutApplied: punishment.applied,
       timeoutMinutes: punishment.timeoutMinutes,
       skippedReason: punishment.skippedReason,
@@ -472,6 +503,8 @@ async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Pr
     targetTag: targetUser.tag,
     reason,
     evidence,
+    evidenceFiles,
+    evidenceMediaSummary,
     evaluation,
     punishment
   });
@@ -698,9 +731,30 @@ async function recentSnitchReportsForTarget(userId: string): Promise<SnitchHisto
     .map((event) => ({
       createdAt: event.createdAt,
       reason: typeof event.details === "string" ? event.details : event.title,
-      evidence: typeof event.metadata?.evidence === "string" ? event.metadata.evidence : undefined,
+      evidence: evidenceTextFromEventMetadata(event.metadata),
       severity: typeof event.metadata?.severity === "string" ? event.metadata.severity : undefined
     }));
+}
+
+function evidenceTextFromEventMetadata(metadata: Record<string, unknown> | undefined): string | undefined {
+  if (!metadata) return undefined;
+
+  const pieces = [
+    typeof metadata.evidence === "string" ? metadata.evidence : undefined,
+    typeof metadata.evidenceMediaSummary === "string" ? metadata.evidenceMediaSummary : undefined,
+    Array.isArray(metadata.evidenceFiles)
+      ? metadata.evidenceFiles
+          .map((item) => {
+            if (!item || typeof item !== "object") return undefined;
+            const file = item as Partial<SnitchEvidenceFile>;
+            return [file.kind, file.name, file.contentType].filter(Boolean).join(" ");
+          })
+          .filter(Boolean)
+          .join("\n")
+      : undefined
+  ].filter(Boolean);
+
+  return pieces.length > 0 ? pieces.join("\n") : undefined;
 }
 
 async function editWithChunks(interaction: ChatInputCommandInteraction, text: string): Promise<void> {
@@ -745,6 +799,8 @@ async function sendSnitchNotice(
     targetTag: string;
     reason: string;
     evidence?: string;
+    evidenceFiles: SnitchEvidenceFile[];
+    evidenceMediaSummary?: string;
     evaluation: SnitchEvaluation;
     punishment: SnitchPunishmentResult;
   }
@@ -757,6 +813,10 @@ async function sendSnitchNotice(
       `Reporter: <@${report.reporterId}> (${report.reporterTag}, ${report.reporterId})`,
       `Reason: ${truncate(report.reason, 700)}`,
       report.evidence ? `Evidence: ${truncate(report.evidence, 300)}` : undefined,
+      report.evidenceFiles.length > 0
+        ? `Evidence files:\n${report.evidenceFiles.map(formatEvidenceFileForNotice).join("\n")}`
+        : undefined,
+      report.evidenceMediaSummary ? `Media review: ${truncate(report.evidenceMediaSummary, 700)}` : undefined,
       `Severity: ${report.evaluation.severity}. ${report.evaluation.explanation}`,
       `Matched: ${report.evaluation.matchedSignals.join(", ")}`,
       `Previous snitch reports in lookback: ${report.evaluation.previousReportCount}`,
@@ -824,6 +884,61 @@ function rememberSnitchCooldown(userId: string): void {
   snitchCooldowns.set(userId, Date.now() + config.snitching.cooldownSeconds * 1000);
 }
 
+function evidenceFilesFromAttachments(attachments: DiscordAttachmentLike[]): SnitchEvidenceFile[] {
+  return attachments.map((attachment) => {
+    const contentType = mediaMimeTypeForAttachment(attachment) ?? "application/octet-stream";
+    const kind = mediaKindFromMimeType(contentType) ?? "image";
+    return {
+      url: attachment.url,
+      name: attachment.name ?? attachment.url,
+      contentType,
+      size: attachment.size,
+      kind
+    };
+  });
+}
+
+async function summarizeSnitchEvidenceMedia(
+  reason: string,
+  evidence: string | undefined,
+  attachments: DiscordAttachmentLike[]
+): Promise<string | undefined> {
+  if (attachments.length === 0) return undefined;
+
+  try {
+    const mediaParts = await mediaPartsFromAttachments(attachments);
+    if (mediaParts.length === 0) return undefined;
+    const context = [reason, evidence].filter(Boolean).join("\n");
+    return (await agent.summarizeMediaEvidence(context, mediaParts)) || undefined;
+  } catch (error) {
+    const message = errorMessage(error);
+    console.warn(`Could not summarize snitch media evidence: ${message}`);
+    return `Media review unavailable: ${message}`;
+  }
+}
+
+function formatEvidenceForEvaluation(
+  evidence: string | undefined,
+  evidenceFiles: SnitchEvidenceFile[],
+  evidenceMediaSummary: string | undefined
+): string | undefined {
+  const fileText = evidenceFiles
+    .map((file) => `${file.kind} evidence ${file.name} ${file.contentType}`)
+    .join("\n");
+  const pieces = [evidence, fileText, evidenceMediaSummary].filter(Boolean);
+  return pieces.length > 0 ? pieces.join("\n") : undefined;
+}
+
+function formatEvidenceFileForNotice(file: SnitchEvidenceFile): string {
+  return `- ${file.kind}: ${file.name} (${formatBytes(file.size)}, ${file.contentType}) ${file.url}`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 async function sendToDiscordChannel(channelId: string | undefined, content: string): Promise<boolean> {
   if (!channelId) return false;
 
@@ -859,6 +974,10 @@ function userLabel(id: string, username: string): string {
   return `${username} (${id})`;
 }
 
+function isPresent<T>(value: T | null | undefined): value is T {
+  return value != null;
+}
+
 type DiscordAttachmentLike = {
   url: string;
   name: string | null;
@@ -866,30 +985,35 @@ type DiscordAttachmentLike = {
   size: number;
 };
 
-async function imagePartsFromAttachments(attachments: DiscordAttachmentLike[]): Promise<Part[]> {
-  const imageAttachments = attachments.filter((attachment) => isImageAttachment(attachment));
-  if (imageAttachments.length === 0) return [];
+async function mediaPartsFromAttachments(attachments: DiscordAttachmentLike[]): Promise<Part[]> {
+  const mediaAttachments = attachments.filter((attachment) => isSupportedMediaAttachment(attachment));
+  if (mediaAttachments.length === 0) return [];
 
   if (!config.vision.enabled) {
-    throw new Error("Image understanding is disabled by VISION_ENABLED=false.");
+    throw new Error("Media understanding is disabled by VISION_ENABLED=false.");
   }
 
-  const selected = imageAttachments.slice(0, 3);
+  const selected = mediaAttachments.slice(0, 3);
   const parts: Part[] = [];
 
   for (const attachment of selected) {
-    if (attachment.size > config.vision.maxImageBytes) {
-      throw new Error(`Image ${attachment.name ?? attachment.url} is too large. Max is ${config.vision.maxImageBytes} bytes.`);
+    const expectedMimeType = mediaMimeTypeForAttachment(attachment);
+    const kind = expectedMimeType ? mediaKindFromMimeType(expectedMimeType) : undefined;
+    const maxBytes = kind === "video" ? config.vision.maxVideoBytes : config.vision.maxImageBytes;
+
+    if (attachment.size > maxBytes) {
+      throw new Error(`${kind ?? "Media"} ${attachment.name ?? attachment.url} is too large. Max is ${maxBytes} bytes.`);
     }
 
     const response = await fetch(attachment.url);
     if (!response.ok) {
-      throw new Error(`Could not download image ${attachment.name ?? attachment.url}: HTTP ${response.status}`);
+      throw new Error(`Could not download media ${attachment.name ?? attachment.url}: HTTP ${response.status}`);
     }
 
-    const mimeType = response.headers.get("content-type") ?? attachment.contentType ?? inferImageMimeType(attachment.name);
-    if (!mimeType?.startsWith("image/")) {
-      throw new Error(`Attachment ${attachment.name ?? attachment.url} is not an image.`);
+    const responseMimeType = normalizeMimeType(response.headers.get("content-type"));
+    const mimeType = mediaKindFromMimeType(responseMimeType) ? responseMimeType : expectedMimeType;
+    if (!mimeType || !mediaKindFromMimeType(mimeType)) {
+      throw new Error(`Attachment ${attachment.name ?? attachment.url} is not a supported image or video.`);
     }
 
     const bytes = Buffer.from(await response.arrayBuffer());
@@ -904,18 +1028,37 @@ async function imagePartsFromAttachments(attachments: DiscordAttachmentLike[]): 
   return parts;
 }
 
-function isImageAttachment(attachment: DiscordAttachmentLike): boolean {
-  if (attachment.contentType?.startsWith("image/")) return true;
-  return Boolean(inferImageMimeType(attachment.name));
+function isSupportedMediaAttachment(attachment: DiscordAttachmentLike): boolean {
+  return Boolean(mediaKindFromMimeType(mediaMimeTypeForAttachment(attachment)));
 }
 
-function inferImageMimeType(name: string | null): string | undefined {
+function mediaMimeTypeForAttachment(attachment: DiscordAttachmentLike): string | undefined {
+  return normalizeMimeType(attachment.contentType) ?? inferMediaMimeType(attachment.name);
+}
+
+function normalizeMimeType(mimeType: string | null | undefined): string | undefined {
+  const normalized = mimeType?.split(";")[0]?.trim().toLowerCase();
+  return normalized || undefined;
+}
+
+function mediaKindFromMimeType(mimeType: string | undefined): "image" | "video" | undefined {
+  if (mimeType?.startsWith("image/")) return "image";
+  if (mimeType?.startsWith("video/")) return "video";
+  return undefined;
+}
+
+function inferMediaMimeType(name: string | null): string | undefined {
   const lowered = name?.toLowerCase();
   if (!lowered) return undefined;
   if (lowered.endsWith(".png")) return "image/png";
   if (lowered.endsWith(".jpg") || lowered.endsWith(".jpeg")) return "image/jpeg";
   if (lowered.endsWith(".webp")) return "image/webp";
   if (lowered.endsWith(".gif")) return "image/gif";
+  if (lowered.endsWith(".mp4")) return "video/mp4";
+  if (lowered.endsWith(".mov")) return "video/quicktime";
+  if (lowered.endsWith(".webm")) return "video/webm";
+  if (lowered.endsWith(".mpeg") || lowered.endsWith(".mpg")) return "video/mpeg";
+  if (lowered.endsWith(".avi")) return "video/x-msvideo";
   return undefined;
 }
 

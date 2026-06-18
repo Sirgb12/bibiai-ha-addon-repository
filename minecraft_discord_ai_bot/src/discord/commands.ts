@@ -14,7 +14,13 @@ export const commands = [
     .addAttachmentOption((option) =>
       option
         .setName("image")
-        .setDescription("Optional image for BibiAI to inspect.")
+        .setDescription("Optional image or video for BibiAI to inspect.")
+        .setRequired(false)
+    )
+    .addAttachmentOption((option) =>
+      option
+        .setName("video")
+        .setDescription("Optional video for BibiAI to inspect.")
         .setRequired(false)
     ),
   new SlashCommandBuilder()
@@ -42,6 +48,24 @@ export const commands = [
         .setDescription("Optional Discord message link or short evidence note.")
         .setRequired(false)
         .setMaxLength(300)
+    )
+    .addAttachmentOption((option) =>
+      option
+        .setName("evidence_file")
+        .setDescription("Optional image or video evidence.")
+        .setRequired(false)
+    )
+    .addAttachmentOption((option) =>
+      option
+        .setName("evidence_file_2")
+        .setDescription("Optional second image or video evidence.")
+        .setRequired(false)
+    )
+    .addAttachmentOption((option) =>
+      option
+        .setName("evidence_file_3")
+        .setDescription("Optional third image or video evidence.")
+        .setRequired(false)
     ),
   new SlashCommandBuilder()
     .setName("vacation")

@@ -28,6 +28,7 @@ export MAX_MEMORY_ENTRY_LENGTH="$(bashio::config 'max_memory_entry_length')"
 
 export VISION_ENABLED="$(bashio::config 'vision_enabled')"
 export MAX_IMAGE_BYTES="$(bashio::config 'max_image_bytes')"
+export MAX_VIDEO_BYTES="$(bashio::config 'max_video_bytes')"
 
 export SNITCHING_ENABLED="$(bashio::config 'snitching_enabled')"
 export SNITCH_CHANNEL_ID="$(bashio::config 'snitch_channel_id')"

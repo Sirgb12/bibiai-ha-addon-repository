@@ -145,12 +145,12 @@ export class GeminiMinecraftAgent {
 
   async ask(
     prompt: string,
-    options: { allowCommandExecution: boolean; userLabel: string; imageParts?: Part[] }
+    options: { allowCommandExecution: boolean; userLabel: string; mediaParts?: Part[] }
   ): Promise<string> {
     const contents: Content[] = [
       {
         role: "user",
-        parts: [{ text: prompt }, ...(options.imageParts ?? [])]
+        parts: [{ text: prompt }, ...(options.mediaParts ?? [])]
       }
     ];
     let safeCommandsRun = 0;
@@ -203,6 +203,37 @@ export class GeminiMinecraftAgent {
     }
 
     return "I hit my tool-call limit while diagnosing that. Try `/mc status`, then ask again with the exact symptom.";
+  }
+
+  async summarizeMediaEvidence(context: string, mediaParts: Part[]): Promise<string> {
+    if (mediaParts.length === 0) return "";
+
+    const response = await this.client.models.generateContent({
+      model: config.gemini.model,
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              text: [
+                "Review the attached Discord evidence for moderation.",
+                "Summarize only rule-relevant behavior visible or audible in the media.",
+                "Do not identify private people, guess identities, or invent details.",
+                "If the media is unclear, say that briefly.",
+                `Report context: ${context}`
+              ].join("\n")
+            },
+            ...mediaParts
+          ]
+        }
+      ],
+      config: {
+        systemInstruction:
+          "You are a concise Discord moderation evidence reviewer. Return one short paragraph under 600 characters."
+      }
+    });
+
+    return (response.text ?? "").trim().slice(0, 600);
   }
 
   async createFixPlan(issue: string, details: string): Promise<FixPlan> {

@@ -8,9 +8,9 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 
 ## What It Can Do
 
-- `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
+- `/ask prompt:<text>`: talk to the AI operator. It can inspect attached images/videos, check server status, and for authorized operators it can run read/safe commands.
 - `/join`: show the server IP, modpack link, and install steps for new players.
-- `/snitch user:<user> reason:<text>`: let a member report someone to BibiAI. BibiAI remembers report reasons/evidence, classifies severity, and applies a short timeout if it can safely moderate that user.
+- `/snitch user:<user> reason:<text>`: let a member report someone to BibiAI. BibiAI remembers report reasons/evidence, accepts image/video evidence, classifies severity, and applies a short timeout if it can safely moderate that user.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
 - `/mc start`: start the server through the configured PebbleHost panel API.
@@ -21,7 +21,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/vacation status/checkin`: show vacation mode status and operator check-ins.
 - `/moderation check user:<user>`: operator-only check for timeout/delete permissions and role hierarchy.
 - Mention the bot in an enabled channel to chat with it.
-- Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
+- Attach an image or short video to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
 - Minecraft monitor alerts, optional PebbleHost/API recovery calls, and weekly bot-observed server reports.
 - Vacation mode for stronger moderation, daily status reports, rule reminders, and basic Discord/server stewardship while the owner is away.
@@ -119,8 +119,9 @@ Recommended:
 - `MC_LOG_PATH`: path to `logs/latest.log` for better AI diagnosis.
 - `MEMORY_ENABLED`: enables persistent memory. Defaults to `true`.
 - `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
-- `VISION_ENABLED`: enables image attachment understanding. Defaults to `true`.
+- `VISION_ENABLED`: enables image/video attachment understanding. Defaults to `true`.
 - `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
+- `MAX_VIDEO_BYTES`: max bytes per video attachment. Defaults to 20 MB.
 - `SNITCHING_ENABLED`: enables `/snitch` reports.
 - `SNITCH_CHANNEL_ID`: optional channel for snitch reports. Falls back to moderation/report channels.
 - `SNITCH_AUTO_PUNISH_ENABLED`: lets `/snitch` apply a short timeout when BibiAI has permission.
@@ -260,33 +261,33 @@ Operators can manage memory in Discord:
 
 The AI can also save a memory when a user explicitly asks it to remember something. It refuses obvious tokens, API keys, passwords, and secrets.
 
-## Images
+## Images And Videos
 
 Use either:
 
 ```text
-/ask prompt:What is in this image? image:<attachment>
+/ask prompt:What is in this image or video? image:<attachment> video:<attachment>
 ```
 
-or mention the bot while attaching an image:
+or mention the bot while attaching an image or video:
 
 ```text
-@BibiAI inspect this screenshot
+@BibiAI inspect this screenshot or clip
 ```
 
-The bot sends image bytes directly to Gemini as inline image data. Keep images below `MAX_IMAGE_BYTES`.
+The bot sends image/video bytes directly to Gemini as inline media data. Keep images below `MAX_IMAGE_BYTES` and videos below `MAX_VIDEO_BYTES`. Short MP4/MOV/WebM clips work best.
 
 ## Snitching
 
 Use `/snitch` when a member needs to report someone while staff are away:
 
 ```text
-/snitch user:@Somebody reason:spamming BibiAI evidence:https://discord.com/channels/...
+/snitch user:@Somebody reason:spamming BibiAI evidence:https://discord.com/channels/... evidence_file:<image-or-video>
 ```
 
-If `snitch_auto_punish_enabled=true`, BibiAI reads the reason and evidence, classifies the report as low/medium/high/critical, then applies a short timeout inside the configured min/max range. It will not punish bots, itself, operators/admins, or anyone above its Discord role.
+If `snitch_auto_punish_enabled=true`, BibiAI reads the reason, text evidence, and up to three attached image/video evidence files. It classifies the report as low/medium/high/critical, then applies a short timeout inside the configured min/max range. It will not punish bots, itself, operators/admins, or anyone above its Discord role.
 
-Every snitch report is written to the persistent event log at `/data/bibiai-events.json`. BibiAI uses that stored history to remember what users were snitched on for and can escalate repeat reports within `snitch_repeat_lookback_days`.
+Every snitch report is written to the persistent event log at `/data/bibiai-events.json`, including the written reason, evidence note, evidence attachment links/metadata, and any media review summary. BibiAI uses that stored history to remember what users were snitched on for and can escalate repeat reports within `snitch_repeat_lookback_days`.
 
 Default severity behavior:
 
@@ -295,7 +296,7 @@ Default severity behavior:
 - High: porn/NSFW, scam/phishing, or explicit-content reports. Default timeout: 4 minutes with the default range.
 - Critical: doxxing, DDoS, serious threats, or personal-info leak language. Default timeout: 5 minutes.
 
-Snitch reports are also sent to `snitch_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel. The report includes the chosen severity, matched reason signal, previous snitch count, remembered recent reasons, and punishment result.
+Snitch reports are also sent to `snitch_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel. The report includes the chosen severity, matched reason signal, previous snitch count, remembered recent reasons, evidence file links, media review summary, and punishment result.
 
 Home Assistant example:
 
@@ -457,7 +458,7 @@ weekly_report_hour_utc: 18
 /mc start
 /mc recover
 /join
-/snitch user:@Somebody reason:breaking the rules evidence:https://discord.com/channels/...
+/snitch user:@Somebody reason:breaking the rules evidence:https://discord.com/channels/... evidence_file:<image-or-video>
 /vacation status
 /moderation check user:@Somebody
 /ask prompt: TPS is low, check status and do safe fixes only.

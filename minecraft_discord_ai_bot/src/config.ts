@@ -67,6 +67,7 @@ const envSchema = z.object({
   MAX_MEMORY_ENTRY_LENGTH: z.coerce.number().int().min(80).max(2000).default(500),
   VISION_ENABLED: z.string().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
+  MAX_VIDEO_BYTES: z.coerce.number().int().min(1024).max(100 * 1024 * 1024).default(20 * 1024 * 1024),
   SNITCHING_ENABLED: z.string().optional(),
   SNITCH_CHANNEL_ID: z.string().optional(),
   SNITCH_ALLOW_USER_REPORTS: z.string().optional(),
@@ -239,7 +240,8 @@ export const config = {
   },
   vision: {
     enabled: boolFromEnv(env.VISION_ENABLED, true),
-    maxImageBytes: env.MAX_IMAGE_BYTES
+    maxImageBytes: env.MAX_IMAGE_BYTES,
+    maxVideoBytes: env.MAX_VIDEO_BYTES
   },
   snitching: {
     enabled: boolFromEnv(env.SNITCHING_ENABLED, true),
