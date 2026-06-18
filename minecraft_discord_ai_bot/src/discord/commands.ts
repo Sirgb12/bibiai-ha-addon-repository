@@ -30,6 +30,20 @@ export const commands = [
       subcommand.setName("checkin").setDescription("Operator-only vacation mode check-in with server and event status.")
     ),
   new SlashCommandBuilder()
+    .setName("moderation")
+    .setDescription("Moderation diagnostics for operators.")
+    .addSubcommand((subcommand) =>
+      subcommand
+        .setName("check")
+        .setDescription("Check whether BibiAI can moderate a user.")
+        .addUserOption((option) =>
+          option
+            .setName("user")
+            .setDescription("User to check.")
+            .setRequired(true)
+        )
+    ),
+  new SlashCommandBuilder()
     .setName("mc")
     .setDescription("Minecraft server controls.")
     .addSubcommand((subcommand) =>

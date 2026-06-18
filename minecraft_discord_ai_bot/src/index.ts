@@ -184,6 +184,22 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
     }
   }
 
+  if (interaction.commandName === "moderation") {
+    if (!hasOperatorAccess(interaction.member)) {
+      await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
+      return;
+    }
+
+    const subcommand = interaction.options.getSubcommand(true);
+
+    if (subcommand === "check") {
+      await interaction.deferReply({ ephemeral: true });
+      const user = interaction.options.getUser("user", true);
+      await interaction.editReply(await formatModerationCheck(interaction, user.id));
+      return;
+    }
+  }
+
   if (interaction.commandName === "memory") {
     if (!hasOperatorAccess(interaction.member)) {
       await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
@@ -492,6 +508,31 @@ function hasOperatorAccess(member: Interaction["member"]): boolean {
 
   const roles = Array.isArray(member.roles) ? member.roles : [];
   return config.discord.adminRoleIds.some((roleId) => roles.includes(roleId));
+}
+
+async function formatModerationCheck(interaction: ChatInputCommandInteraction, userId: string): Promise<string> {
+  if (!interaction.guild) return "This command only works in a server.";
+
+  const target = await interaction.guild.members.fetch(userId).catch(() => null);
+  const me = interaction.guild.members.me ?? (await interaction.guild.members.fetchMe().catch(() => null));
+
+  if (!target) return "I could not fetch that member.";
+
+  const lines = [
+    `**Moderation check for ${target.user.tag}**`,
+    `Moderation enabled: ${config.moderation.enabled ? "yes" : "no"}`,
+    `Vacation mode: ${config.vacation.enabled ? "on" : "off"}`,
+    `Vacation full moderation: ${config.vacationModeration.enabled ? "on" : "off"}`,
+    `Target is bot: ${target.user.bot ? "yes" : "no"}`,
+    `Target has operator/admin access: ${hasOperatorAccess(target) ? "yes" : "no"}`,
+    `Bot has Moderate Members: ${me?.permissions.has(PermissionsBitField.Flags.ModerateMembers) ? "yes" : "no"}`,
+    `Bot has Manage Messages: ${me?.permissions.has(PermissionsBitField.Flags.ManageMessages) ? "yes" : "no"}`,
+    `Target moderatable by bot: ${target.moderatable ? "yes" : "no"}`,
+    "",
+    "If target has operator/admin access or is not moderatable, BibiAI will intentionally not timeout them."
+  ];
+
+  return lines.join("\n");
 }
 
 async function editWithChunks(interaction: ChatInputCommandInteraction, text: string): Promise<void> {

@@ -18,6 +18,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/rcon command:<command>`: run one allowlisted RCON command as an operator.
 - `/memory add/list/remove/clear`: manage persistent BibiAI memory.
 - `/vacation status/checkin`: show vacation mode status and operator check-ins.
+- `/moderation check user:<user>`: operator-only check for timeout/delete permissions and role hierarchy.
 - Mention the bot in an enabled channel to chat with it.
 - Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
@@ -410,6 +411,7 @@ weekly_report_hour_utc: 18
 /mc recover
 /join
 /vacation status
+/moderation check user:@Somebody
 /ask prompt: TPS is low, check status and do safe fixes only.
 /mc fix issue:Lag / low TPS details: Players say mobs and item drops are everywhere near spawn.
 /rcon command:save-all
@@ -423,6 +425,7 @@ For restarts, leave `ALLOW_STOP_COMMAND=false` until your server is managed by s
 - Slash commands missing: set `DISCORD_GUILD_ID`, run `npm.cmd run register:commands`, then restart Discord.
 - Mention chat ignored: enable Message Content intent in the Discord Developer Portal.
 - Timeouts do nothing: give the bot Moderate Members permission and move its Discord role above the role it should moderate.
+- Moderation test ignored: use `/moderation check user:<test user>` and make sure the test user is not an operator/admin.
 - `/mc start` does nothing: set `pebblehost_api_enabled`, `pebblehost_api_token`, and `pebblehost_server_id`.
 - Recovery does nothing: for PebbleHost automatic recovery, set `mc_recovery_enabled`, `pebblehost_api_enabled`, `pebblehost_api_token`, and `pebblehost_server_id`. For other hosts, `mc_recovery_webhook_url` must be a real restart/recovery endpoint.
 - AI refuses a command: it is probably not allowlisted in `src/minecraft/commandPolicy.ts`.
