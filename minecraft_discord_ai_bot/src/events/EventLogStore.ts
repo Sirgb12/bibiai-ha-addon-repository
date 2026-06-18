@@ -8,7 +8,8 @@ export type EventLogType =
   | "minecraft_recovery"
   | "minecraft_diagnostics"
   | "moderation"
-  | "weekly_report";
+  | "weekly_report"
+  | "vacation_report";
 
 export type StoredEvent = {
   id: string;
@@ -22,6 +23,7 @@ export type StoredEvent = {
 type EventLogFile = {
   version: 1;
   lastWeeklyReportKey?: string;
+  lastVacationReportKey?: string;
   events: StoredEvent[];
 };
 
@@ -73,6 +75,17 @@ export class EventLogStore {
     await this.write(file);
   }
 
+  async getLastVacationReportKey(): Promise<string | undefined> {
+    const file = await this.read();
+    return file.lastVacationReportKey;
+  }
+
+  async setLastVacationReportKey(key: string): Promise<void> {
+    const file = await this.read();
+    file.lastVacationReportKey = key;
+    await this.write(file);
+  }
+
   private prune(events: StoredEvent[]): StoredEvent[] {
     const cutoff = Date.now() - config.events.retentionDays * 24 * 60 * 60 * 1000;
     return events
@@ -86,6 +99,7 @@ export class EventLogStore {
       return {
         version: 1,
         lastWeeklyReportKey: typeof raw.lastWeeklyReportKey === "string" ? raw.lastWeeklyReportKey : undefined,
+        lastVacationReportKey: typeof raw.lastVacationReportKey === "string" ? raw.lastVacationReportKey : undefined,
         events: Array.isArray(raw.events) ? raw.events.filter(isStoredEvent) : []
       };
     } catch (error) {

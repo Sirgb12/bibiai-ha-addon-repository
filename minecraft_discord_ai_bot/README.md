@@ -17,10 +17,12 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/mc fix issue:<choice> details:<text>`: generate an AI fix plan with buttons to run safe commands or explicitly confirm risky commands.
 - `/rcon command:<command>`: run one allowlisted RCON command as an operator.
 - `/memory add/list/remove/clear`: manage persistent BibiAI memory.
+- `/vacation status/checkin`: show vacation mode status and operator check-ins.
 - Mention the bot in an enabled channel to chat with it.
 - Attach an image to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
 - Minecraft monitor alerts, optional PebbleHost/API recovery calls, and weekly bot-observed server reports.
+- Vacation mode for daily status reports, rule reminders, and basic Discord/server stewardship while the owner is away.
 
 Regular users can ask questions and get diagnosis. Only users with one of `BOT_ADMIN_ROLE_IDS`, Administrator, or Manage Server can trigger RCON execution.
 
@@ -137,6 +139,14 @@ Recommended:
 - `JOIN_INSTALL_GUIDE_URL`: optional longer install guide link.
 - `JOIN_HELP_CHANNEL_ID`: optional Discord channel ID for install help.
 - `JOIN_EXTRA_NOTES`: optional short notes shown under the join guide.
+- `VACATION_MODE_ENABLED`: enables vacation mode.
+- `VACATION_RETURN_DATE`: optional date/string shown in vacation replies.
+- `VACATION_REPORT_CHANNEL_ID`: optional channel for daily vacation reports.
+- `VACATION_DAILY_REPORT_ENABLED`: sends one daily vacation check-in report while vacation mode is enabled.
+- `VACATION_REPORT_HOUR_UTC`: UTC hour for daily vacation reports.
+- `VACATION_AUTO_REPLY_ENABLED`: lets mentions about rules/help/admin absence get a fixed vacation-mode reply.
+- `VACATION_OWNER_NOTE`: short away message.
+- `VACATION_RULES_SUMMARY`: rules BibiAI should repeat while you are gone.
 
 ## Register Commands
 
@@ -322,6 +332,32 @@ mc_recovery_enabled: true
 
 After `mc_recovery_offline_checks` failed checks, BibiAI will call PebbleHost or the fallback webhook once for the outage. `/mc start` lets an operator send a PebbleHost start signal manually, and `/mc recover` lets an operator trigger the configured recovery flow manually.
 
+## Vacation Mode
+
+Vacation mode helps BibiAI cover basic Discord and Minecraft server stewardship for a short period. It does not replace human moderators, but it can answer routine questions, repeat rules, keep `/join` handy, apply the existing short timeouts, and send daily check-in reports.
+
+Example Home Assistant config:
+
+```yaml
+vacation_mode_enabled: true
+vacation_return_date: "2026-06-25"
+vacation_report_channel_id: "123456789012345678"
+vacation_daily_report_enabled: true
+vacation_report_hour_utc: 18
+vacation_auto_reply_enabled: true
+vacation_owner_note: "Ben is away for about a week. BibiAI is covering basic server help and routine moderation."
+vacation_rules_summary: "No edating, no porn/NSFW, no spamming BibiAI, keep chat civil, and use /join for setup help."
+```
+
+Commands:
+
+```text
+/vacation status
+/vacation checkin
+```
+
+While vacation mode is enabled, mentioning BibiAI with questions like "who is in charge?", "what are the rules?", "where is Ben?", or "I need help" returns a fixed vacation-mode answer without spending an AI request. Daily reports summarize Minecraft status, moderation actions, offline alerts, recovery attempts, and diagnostics requests.
+
 ## Weekly Reports
 
 Weekly reports are based on events the bot can observe: monitor offline/online transitions, recovery attempts, diagnostics requests, and moderation actions. Set `minecraft_report_channel_id` if you want reports in a specific channel.
@@ -342,6 +378,7 @@ weekly_report_hour_utc: 18
 /mc start
 /mc recover
 /join
+/vacation status
 /ask prompt: TPS is low, check status and do safe fixes only.
 /mc fix issue:Lag / low TPS details: Players say mobs and item drops are everywhere near spawn.
 /rcon command:save-all

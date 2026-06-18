@@ -26,6 +26,7 @@ import { MinecraftService } from "./minecraft/MinecraftService.js";
 import { formatJoinInfo, looksLikeJoinHelpRequest } from "./onboarding/JoinInfo.js";
 import { WeeklyReporter } from "./reports/WeeklyReporter.js";
 import { splitDiscordText, truncate } from "./util/text.js";
+import { VacationManager } from "./vacation/VacationManager.js";
 
 type PendingPlan = {
   id: string;
@@ -48,6 +49,7 @@ const client = new Client({
 
 const minecraftMonitor = new MinecraftMonitor(minecraft, events, sendMinecraftNotice);
 const weeklyReporter = new WeeklyReporter(minecraft, events, sendWeeklyReport);
+const vacationManager = new VacationManager(minecraft, events, sendVacationReport);
 
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`Logged in as ${readyClient.user.tag}.`);
@@ -55,6 +57,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   await registerSlashCommands();
   minecraftMonitor.start();
   weeklyReporter.start();
+  vacationManager.start();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -94,6 +97,15 @@ client.on(Events.MessageCreate, async (message) => {
 
     if (config.onboarding.autoReplyEnabled && looksLikeJoinHelpRequest(message.content)) {
       await message.reply(formatJoinInfo());
+      return;
+    }
+
+    if (
+      config.vacation.enabled &&
+      config.vacation.autoReplyEnabled &&
+      vacationManager.looksLikeVacationHelpRequest(message.content)
+    ) {
+      await message.reply(vacationManager.formatAutoReply());
       return;
     }
 
@@ -146,6 +158,27 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
   if (interaction.commandName === "join") {
     await interaction.reply(formatJoinInfo());
     return;
+  }
+
+  if (interaction.commandName === "vacation") {
+    const subcommand = interaction.options.getSubcommand(true);
+
+    if (subcommand === "status") {
+      await interaction.deferReply();
+      await interaction.editReply(await vacationManager.formatStatus());
+      return;
+    }
+
+    if (subcommand === "checkin") {
+      if (!hasOperatorAccess(interaction.member)) {
+        await interaction.reply({ content: "You need an operator role or Manage Server permission.", ephemeral: true });
+        return;
+      }
+
+      await interaction.deferReply({ ephemeral: true });
+      await interaction.editReply(await vacationManager.formatStatus());
+      return;
+    }
   }
 
   if (interaction.commandName === "memory") {
@@ -502,8 +535,22 @@ async function sendWeeklyReport(content: string): Promise<void> {
   await sendToDiscordChannel(channelId, content);
 }
 
+async function sendVacationReport(content: string): Promise<void> {
+  const channelId = vacationNotificationChannelId();
+  if (!channelId) {
+    console.log(content.replace(/\*\*/g, ""));
+    return;
+  }
+
+  await sendToDiscordChannel(channelId, content);
+}
+
 function notificationChannelId(): string | undefined {
   return config.minecraft.reportChannelId ?? config.moderation.logChannelId ?? config.discord.allowedChannelIds[0];
+}
+
+function vacationNotificationChannelId(): string | undefined {
+  return config.vacation.reportChannelId ?? notificationChannelId();
 }
 
 async function sendToDiscordChannel(channelId: string | undefined, content: string): Promise<boolean> {

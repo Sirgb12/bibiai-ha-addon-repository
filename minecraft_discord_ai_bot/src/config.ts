@@ -101,6 +101,20 @@ const envSchema = z.object({
   JOIN_HELP_CHANNEL_ID: z.string().optional(),
   JOIN_EXTRA_NOTES: z.string().max(1000).optional(),
   JOIN_AUTO_REPLY_ENABLED: z.string().optional(),
+  VACATION_MODE_ENABLED: z.string().optional(),
+  VACATION_RETURN_DATE: z.string().optional(),
+  VACATION_REPORT_CHANNEL_ID: z.string().optional(),
+  VACATION_DAILY_REPORT_ENABLED: z.string().optional(),
+  VACATION_REPORT_HOUR_UTC: z.coerce.number().int().min(0).max(23).default(18),
+  VACATION_AUTO_REPLY_ENABLED: z.string().optional(),
+  VACATION_OWNER_NOTE: z
+    .string()
+    .max(1000)
+    .default("Ben is away for about a week. BibiAI is covering basic server help and routine moderation."),
+  VACATION_RULES_SUMMARY: z
+    .string()
+    .max(1000)
+    .default("No edating, no porn/NSFW, no spamming BibiAI, keep chat civil, and use /join for setup help."),
   MINECRAFT_REPORT_CHANNEL_ID: z.string().optional(),
   WEEKLY_REPORT_ENABLED: z.string().optional(),
   WEEKLY_REPORT_DAY: z
@@ -167,6 +181,16 @@ export const config = {
     helpChannelId: cleanOptional(env.JOIN_HELP_CHANNEL_ID),
     extraNotes: cleanOptional(env.JOIN_EXTRA_NOTES) ?? defaultJoinExtraNotes,
     autoReplyEnabled: boolFromEnv(env.JOIN_AUTO_REPLY_ENABLED, true)
+  },
+  vacation: {
+    enabled: boolFromEnv(env.VACATION_MODE_ENABLED, false),
+    returnDate: cleanOptional(env.VACATION_RETURN_DATE),
+    reportChannelId: cleanOptional(env.VACATION_REPORT_CHANNEL_ID),
+    dailyReportEnabled: boolFromEnv(env.VACATION_DAILY_REPORT_ENABLED, true),
+    reportHourUtc: env.VACATION_REPORT_HOUR_UTC,
+    autoReplyEnabled: boolFromEnv(env.VACATION_AUTO_REPLY_ENABLED, true),
+    ownerNote: env.VACATION_OWNER_NOTE,
+    rulesSummary: env.VACATION_RULES_SUMMARY
   },
   memory: {
     enabled: boolFromEnv(env.MEMORY_ENABLED, true),

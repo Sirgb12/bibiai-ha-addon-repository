@@ -21,6 +21,15 @@ export const commands = [
     .setName("join")
     .setDescription("Show the server IP, modpack link, and install steps for new players."),
   new SlashCommandBuilder()
+    .setName("vacation")
+    .setDescription("Vacation mode status and operator check-ins.")
+    .addSubcommand((subcommand) =>
+      subcommand.setName("status").setDescription("Show whether vacation mode is active and what BibiAI is watching.")
+    )
+    .addSubcommand((subcommand) =>
+      subcommand.setName("checkin").setDescription("Operator-only vacation mode check-in with server and event status.")
+    ),
+  new SlashCommandBuilder()
     .setName("mc")
     .setDescription("Minecraft server controls.")
     .addSubcommand((subcommand) =>

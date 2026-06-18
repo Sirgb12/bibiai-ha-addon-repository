@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.2.4"
+version: "1.2.5"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -71,6 +71,14 @@ options:
   join_help_channel_id: ""
   join_extra_notes: "CurseForge players must also download the Origins Legacy Classes mod from Modrinth's website and drag it into the pack's mods folder."
   join_auto_reply_enabled: true
+  vacation_mode_enabled: false
+  vacation_return_date: ""
+  vacation_report_channel_id: ""
+  vacation_daily_report_enabled: true
+  vacation_report_hour_utc: 18
+  vacation_auto_reply_enabled: true
+  vacation_owner_note: "Ben is away for about a week. BibiAI is covering basic server help and routine moderation."
+  vacation_rules_summary: "No edating, no porn/NSFW, no spamming BibiAI, keep chat civil, and use /join for setup help."
   minecraft_report_channel_id: ""
   weekly_report_enabled: true
   weekly_report_day: "sunday"
@@ -138,6 +146,14 @@ schema:
   join_help_channel_id: str
   join_extra_notes: str
   join_auto_reply_enabled: bool
+  vacation_mode_enabled: bool
+  vacation_return_date: str
+  vacation_report_channel_id: str
+  vacation_daily_report_enabled: bool
+  vacation_report_hour_utc: int
+  vacation_auto_reply_enabled: bool
+  vacation_owner_note: str
+  vacation_rules_summary: str
   minecraft_report_channel_id: str
   weekly_report_enabled: bool
   weekly_report_day: list(sunday|monday|tuesday|wednesday|thursday|friday|saturday)

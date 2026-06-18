@@ -126,6 +126,15 @@ const toolDeclarations: FunctionDeclaration[] = [
   }
 ];
 
+const vacationInfoForPrompt = (): string =>
+  [
+    `Enabled: ${config.vacation.enabled}`,
+    `Expected return: ${config.vacation.returnDate || "not configured"}`,
+    `Owner note: ${config.vacation.ownerNote}`,
+    `Rules summary: ${config.vacation.rulesSummary}`,
+    "If vacation mode is enabled, help with routine Discord/server questions, direct players to /join, remind people of rules, and be clear that serious issues still need a real operator."
+  ].join("\n");
+
 export class GeminiMinecraftAgent {
   private readonly client = new GoogleGenAI({ apiKey: config.gemini.apiKey });
 
@@ -366,6 +375,9 @@ export class GeminiMinecraftAgent {
       "",
       "New player join information:",
       joinInfoForPrompt(),
+      "",
+      "Vacation mode:",
+      vacationInfoForPrompt(),
       "",
       "Command catalog:",
       commandCatalogForPrompt({
