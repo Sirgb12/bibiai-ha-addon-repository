@@ -11,6 +11,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/ask prompt:<text>`: talk to the AI operator. It can inspect attached images/videos, check server status, and for authorized operators it can run read/safe commands.
 - `/join`: show the server IP, modpack link, and install steps for new players.
 - `/snitch user:<user> reason:<text>`: let a member report someone to BibiAI. BibiAI remembers report reasons/evidence, accepts image/video evidence, classifies severity, and applies a short timeout if it can safely moderate that user.
+- Say `sholom` in an enabled text channel while you are in a voice channel, and BibiAI joins your voice channel to play the configured MP3.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
 - `/mc start`: start the server through the configured PebbleHost panel API.
@@ -81,6 +82,7 @@ Gemini free-tier availability and limits are model-specific. If the bot gets quo
    - Use Slash Commands
    - Moderate Members, only if you want short timeout moderation
    - Manage Messages, only if you want BibiAI to delete rule-breaking messages during vacation mode
+   - Connect and Speak, only if you want the `sholom` voice trigger
 
 ## Minecraft RCON Setup
 
@@ -116,6 +118,11 @@ Recommended:
 - `BOT_ALLOWED_CHANNEL_IDS`: comma-separated Discord channel IDs where the bot may respond.
 - `BOT_ADMIN_ROLE_IDS`: comma-separated role IDs allowed to use `/mc fix`, `/rcon`, and confirmation buttons.
 - `BOT_PERSONA_STYLE`: broad speaking style for the bot. Avoid asking it to impersonate a real living person; use a general style instead.
+- `SHOLOM_ENABLED`: enables the voice-channel MP3 trigger.
+- `SHOLOM_TRIGGER`: word that starts playback. Defaults to `sholom`.
+- `SHOLOM_AUDIO_PATH`: MP3 file path. Defaults to `/share/bibiai_sholom.mp3`.
+- `SHOLOM_COOLDOWN_SECONDS`: cooldown between plays. Defaults to 120 seconds.
+- `SHOLOM_LEAVE_AFTER_SECONDS`: seconds to wait after the song before leaving voice. Defaults to 10.
 - `MC_LOG_PATH`: path to `logs/latest.log` for better AI diagnosis.
 - `MEMORY_ENABLED`: enables persistent memory. Defaults to `true`.
 - `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
@@ -276,6 +283,28 @@ or mention the bot while attaching an image or video:
 ```
 
 The bot sends image/video bytes directly to Gemini as inline media data. Keep images below `MAX_IMAGE_BYTES` and videos below `MAX_VIDEO_BYTES`. Short MP4/MOV/WebM clips work best.
+
+## Sholom Voice Trigger
+
+Put your MP3 file here in Home Assistant:
+
+```text
+/share/bibiai_sholom.mp3
+```
+
+Then say `sholom` in an enabled text channel while you are already connected to a voice channel. BibiAI joins that voice channel, plays the MP3, waits briefly, and leaves.
+
+Home Assistant example:
+
+```yaml
+sholom_enabled: true
+sholom_trigger: "sholom"
+sholom_audio_path: "/share/bibiai_sholom.mp3"
+sholom_cooldown_seconds: 120
+sholom_leave_after_seconds: 10
+```
+
+BibiAI needs Discord's **Connect** and **Speak** permissions in the voice channel. The add-on includes `ffmpeg` for MP3 playback.
 
 ## Snitching
 

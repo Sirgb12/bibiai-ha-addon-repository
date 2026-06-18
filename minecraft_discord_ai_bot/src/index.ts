@@ -28,6 +28,7 @@ import { WeeklyReporter } from "./reports/WeeklyReporter.js";
 import { evaluateSnitchReport, SnitchEvaluation, SnitchHistoryItem } from "./snitch/SnitchEvaluator.js";
 import { splitDiscordText, truncate } from "./util/text.js";
 import { VacationManager } from "./vacation/VacationManager.js";
+import { SholomPlayer } from "./voice/SholomPlayer.js";
 
 type PendingPlan = {
   id: string;
@@ -58,9 +59,15 @@ const moderation = new ModerationService(events);
 const agent = new GeminiMinecraftAgent(minecraft, memory);
 const pendingPlans = new Map<string, PendingPlan>();
 const snitchCooldowns = new Map<string, number>();
+const sholomPlayer = new SholomPlayer();
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
 const minecraftMonitor = new MinecraftMonitor(minecraft, events, sendMinecraftNotice);
@@ -111,6 +118,8 @@ client.on(Events.MessageCreate, async (message) => {
       await sendModerationNotice(message, moderationAction);
       return;
     }
+
+    if (await sholomPlayer.handleMessage(message)) return;
 
     if (!message.mentions.has(client.user)) return;
 

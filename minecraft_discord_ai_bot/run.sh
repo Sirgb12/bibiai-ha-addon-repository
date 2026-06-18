@@ -9,6 +9,12 @@ export BOT_ADMIN_ROLE_IDS="$(bashio::config 'bot_admin_role_ids')"
 export BOT_PERSONA_STYLE="$(bashio::config 'bot_persona_style')"
 export BOT_PERSONA_FILE="$(bashio::config 'bot_persona_file')"
 
+export SHOLOM_ENABLED="$(bashio::config 'sholom_enabled')"
+export SHOLOM_TRIGGER="$(bashio::config 'sholom_trigger')"
+export SHOLOM_AUDIO_PATH="$(bashio::config 'sholom_audio_path')"
+export SHOLOM_COOLDOWN_SECONDS="$(bashio::config 'sholom_cooldown_seconds')"
+export SHOLOM_LEAVE_AFTER_SECONDS="$(bashio::config 'sholom_leave_after_seconds')"
+
 export GEMINI_API_KEY="$(bashio::config 'gemini_api_key')"
 export GEMINI_MODEL="$(bashio::config 'gemini_model')"
 

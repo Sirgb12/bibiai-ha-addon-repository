@@ -53,6 +53,11 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().default("gemini-3.5-flash"),
   BOT_ALLOWED_CHANNEL_IDS: z.string().optional(),
   BOT_ADMIN_ROLE_IDS: z.string().optional(),
+  SHOLOM_ENABLED: z.string().optional(),
+  SHOLOM_TRIGGER: z.string().default("sholom"),
+  SHOLOM_AUDIO_PATH: z.string().default("/share/bibiai_sholom.mp3"),
+  SHOLOM_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(120),
+  SHOLOM_LEAVE_AFTER_SECONDS: z.coerce.number().int().min(0).max(300).default(10),
   MC_SERVER_NAME: z.string().default("Minecraft"),
   MC_RCON_HOST: z.string().default("127.0.0.1"),
   MC_RCON_PORT: z.coerce.number().int().min(1).max(65535).default(25575),
@@ -167,6 +172,13 @@ export const config = {
   gemini: {
     apiKey: env.GEMINI_API_KEY,
     model: env.GEMINI_MODEL
+  },
+  sholom: {
+    enabled: boolFromEnv(env.SHOLOM_ENABLED, true),
+    trigger: cleanOptional(env.SHOLOM_TRIGGER) ?? "sholom",
+    audioPath: cleanOptional(env.SHOLOM_AUDIO_PATH) ?? "/share/bibiai_sholom.mp3",
+    cooldownSeconds: env.SHOLOM_COOLDOWN_SECONDS,
+    leaveAfterSeconds: env.SHOLOM_LEAVE_AFTER_SECONDS
   },
   minecraft: {
     serverName: env.MC_SERVER_NAME,

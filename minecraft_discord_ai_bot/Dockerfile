@@ -8,7 +8,7 @@ LABEL \
   io.hass.type="addon" \
   io.hass.arch="${BUILD_ARCH}"
 
-RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache nodejs npm ffmpeg
 
 WORKDIR /app
 
