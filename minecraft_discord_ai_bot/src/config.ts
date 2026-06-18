@@ -67,6 +67,13 @@ const envSchema = z.object({
   MAX_MEMORY_ENTRY_LENGTH: z.coerce.number().int().min(80).max(2000).default(500),
   VISION_ENABLED: z.string().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
+  SNITCHING_ENABLED: z.string().optional(),
+  SNITCH_CHANNEL_ID: z.string().optional(),
+  SNITCH_ALLOW_USER_REPORTS: z.string().optional(),
+  SNITCH_REPORT_MODERATION_EVENTS: z.string().optional(),
+  SNITCH_AUTO_PUNISH_ENABLED: z.string().optional(),
+  SNITCH_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(3),
+  SNITCH_COOLDOWN_SECONDS: z.coerce.number().int().min(0).max(3600).default(300),
   MODERATION_ENABLED: z.string().optional(),
   MODERATION_LOG_CHANNEL_ID: z.string().optional(),
   MODERATION_MIN_TIMEOUT_MINUTES: z.coerce.number().int().min(1).max(5).default(1),
@@ -229,6 +236,15 @@ export const config = {
   vision: {
     enabled: boolFromEnv(env.VISION_ENABLED, true),
     maxImageBytes: env.MAX_IMAGE_BYTES
+  },
+  snitching: {
+    enabled: boolFromEnv(env.SNITCHING_ENABLED, true),
+    channelId: cleanOptional(env.SNITCH_CHANNEL_ID),
+    allowUserReports: boolFromEnv(env.SNITCH_ALLOW_USER_REPORTS, true),
+    reportModerationEvents: boolFromEnv(env.SNITCH_REPORT_MODERATION_EVENTS, true),
+    autoPunishEnabled: boolFromEnv(env.SNITCH_AUTO_PUNISH_ENABLED, true),
+    timeoutMinutes: env.SNITCH_TIMEOUT_MINUTES,
+    cooldownSeconds: env.SNITCH_COOLDOWN_SECONDS
   },
   moderation: {
     enabled: boolFromEnv(env.MODERATION_ENABLED, true),

@@ -21,6 +21,29 @@ export const commands = [
     .setName("join")
     .setDescription("Show the server IP, modpack link, and install steps for new players."),
   new SlashCommandBuilder()
+    .setName("snitch")
+    .setDescription("Report a rule-breaker to BibiAI and apply a short timeout when allowed.")
+    .addUserOption((option) =>
+      option
+        .setName("user")
+        .setDescription("Who are you reporting?")
+        .setRequired(true)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("reason")
+        .setDescription("What did they do?")
+        .setRequired(true)
+        .setMaxLength(700)
+    )
+    .addStringOption((option) =>
+      option
+        .setName("evidence")
+        .setDescription("Optional Discord message link or short evidence note.")
+        .setRequired(false)
+        .setMaxLength(300)
+    ),
+  new SlashCommandBuilder()
     .setName("vacation")
     .setDescription("Vacation mode status and operator check-ins.")
     .addSubcommand((subcommand) =>

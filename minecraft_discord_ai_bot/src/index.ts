@@ -42,6 +42,7 @@ const events = new EventLogStore();
 const moderation = new ModerationService(events);
 const agent = new GeminiMinecraftAgent(minecraft, memory);
 const pendingPlans = new Map<string, PendingPlan>();
+const snitchCooldowns = new Map<string, number>();
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
@@ -160,6 +161,11 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
 
   if (interaction.commandName === "join") {
     await interaction.reply(formatJoinInfo());
+    return;
+  }
+
+  if (interaction.commandName === "snitch") {
+    await handleSnitchCommand(interaction);
     return;
   }
 
@@ -363,6 +369,128 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
   }
 }
 
+async function handleSnitchCommand(interaction: ChatInputCommandInteraction): Promise<void> {
+  if (!config.snitching.enabled || !config.snitching.allowUserReports) {
+    await interaction.reply({ content: "Snitching is disabled right now.", ephemeral: true });
+    return;
+  }
+
+  if (!interaction.guild) {
+    await interaction.reply({ content: "Snitching only works inside the Discord server.", ephemeral: true });
+    return;
+  }
+
+  const reporterIsOperator = hasOperatorAccess(interaction.member);
+  const cooldownRemaining = reporterIsOperator ? 0 : snitchCooldownRemainingSeconds(interaction.user.id);
+  if (cooldownRemaining > 0) {
+    await interaction.reply({
+      content: `Slow down. You can snitch again in ${cooldownRemaining} second(s).`,
+      ephemeral: true
+    });
+    return;
+  }
+
+  const targetUser = interaction.options.getUser("user", true);
+  const reason = interaction.options.getString("reason", true).trim();
+  const evidence = interaction.options.getString("evidence")?.trim();
+
+  if (!reason) {
+    await interaction.reply({ content: "Give me a reason. Empty snitching is just paperwork.", ephemeral: true });
+    return;
+  }
+
+  if (targetUser.id === interaction.user.id) {
+    await interaction.reply({ content: "You cannot snitch on yourself.", ephemeral: true });
+    return;
+  }
+
+  if (targetUser.bot) {
+    await interaction.reply({ content: "I am not punishing bots through snitch reports.", ephemeral: true });
+    return;
+  }
+
+  await interaction.deferReply({ ephemeral: true });
+
+  const targetMember = await interaction.guild.members.fetch(targetUser.id).catch(() => null);
+  if (!targetMember) {
+    await interaction.editReply("I could not find that member in this server.");
+    return;
+  }
+
+  const channelId = snitchChannelId() ?? interaction.channelId ?? undefined;
+  if (!channelId) {
+    await interaction.editReply("No snitch channel is available. Set `snitch_channel_id`.");
+    return;
+  }
+
+  const punishment = await applySnitchPunishment(interaction, targetMember, reason);
+  rememberSnitchCooldown(interaction.user.id);
+
+  await events.record(
+    "snitch_report",
+    `Snitch report on ${targetUser.username}`,
+    reason,
+    {
+      reporterId: interaction.user.id,
+      targetUserId: targetUser.id,
+      evidence,
+      timeoutApplied: punishment.applied,
+      timeoutMinutes: punishment.timeoutMinutes,
+      skippedReason: punishment.skippedReason,
+      channelId
+    }
+  );
+
+  const sent = await sendSnitchNotice(channelId, {
+    reporterId: interaction.user.id,
+    reporterTag: interaction.user.tag,
+    targetId: targetUser.id,
+    targetTag: targetUser.tag,
+    reason,
+    evidence,
+    punishment
+  });
+
+  const confirmation = punishment.applied
+    ? `Snitch accepted. <@${targetUser.id}> was timed out for ${punishment.timeoutMinutes} minute(s).`
+    : `Snitch filed. No timeout was applied: ${punishment.skippedReason}`;
+
+  await interaction.editReply(
+    `${confirmation}${sent ? "" : " I could not send the snitch notice to the configured channel."}`
+  );
+}
+
+async function applySnitchPunishment(
+  interaction: ChatInputCommandInteraction,
+  targetMember: GuildMember,
+  reason: string
+): Promise<{ applied: boolean; timeoutMinutes?: number; skippedReason?: string }> {
+  if (!config.snitching.autoPunishEnabled) {
+    return { applied: false, skippedReason: "snitch auto-punishment is disabled" };
+  }
+
+  if (hasOperatorAccess(targetMember)) {
+    return { applied: false, skippedReason: "the reported user has operator/admin access" };
+  }
+
+  const me = interaction.guild?.members.me ?? (await interaction.guild?.members.fetchMe().catch(() => null));
+  if (!me?.permissions.has(PermissionsBitField.Flags.ModerateMembers)) {
+    return { applied: false, skippedReason: "BibiAI lacks Moderate Members permission" };
+  }
+
+  if (!targetMember.moderatable) {
+    return { applied: false, skippedReason: "BibiAI's role is not high enough to moderate that user" };
+  }
+
+  const timeoutMinutes = config.snitching.timeoutMinutes;
+  await targetMember.timeout(
+    timeoutMinutes * 60 * 1000,
+    truncate(`BibiAI snitch report by ${interaction.user.tag}: ${reason}`, 500)
+  );
+
+  return { applied: true, timeoutMinutes };
+}
+
 async function handleButton(interaction: ButtonInteraction): Promise<void> {
   const [prefix, action, id] = interaction.customId.split(":");
   if (prefix !== "plan" || !action || !id) return;
@@ -552,7 +680,9 @@ async function replyInChunks(message: Message, text: string): Promise<void> {
 }
 
 async function sendModerationNotice(message: Message, action: ModerationAction): Promise<void> {
-  const channelId = config.moderation.logChannelId ?? message.channelId;
+  const channelId = config.snitching.enabled && config.snitching.reportModerationEvents
+    ? snitchChannelId() ?? message.channelId
+    : config.moderation.logChannelId ?? message.channelId;
   await sendToDiscordChannel(
     channelId,
     [
@@ -563,6 +693,35 @@ async function sendModerationNotice(message: Message, action: ModerationAction):
     ]
       .filter(Boolean)
       .join(" ")
+  );
+}
+
+async function sendSnitchNotice(
+  channelId: string,
+  report: {
+    reporterId: string;
+    reporterTag: string;
+    targetId: string;
+    targetTag: string;
+    reason: string;
+    evidence?: string;
+    punishment: { applied: boolean; timeoutMinutes?: number; skippedReason?: string };
+  }
+): Promise<boolean> {
+  return sendToDiscordChannel(
+    channelId,
+    [
+      "**BibiAI snitch report**",
+      `Target: <@${report.targetId}> (${report.targetTag}, ${report.targetId})`,
+      `Reporter: <@${report.reporterId}> (${report.reporterTag}, ${report.reporterId})`,
+      `Reason: ${truncate(report.reason, 700)}`,
+      report.evidence ? `Evidence: ${truncate(report.evidence, 300)}` : undefined,
+      report.punishment.applied
+        ? `Action: timed out for ${report.punishment.timeoutMinutes} minute(s).`
+        : `Action: no timeout. Reason: ${report.punishment.skippedReason}.`
+    ]
+      .filter(Boolean)
+      .join("\n")
   );
 }
 
@@ -602,6 +761,20 @@ function notificationChannelId(): string | undefined {
 
 function vacationNotificationChannelId(): string | undefined {
   return config.vacation.reportChannelId ?? notificationChannelId();
+}
+
+function snitchChannelId(): string | undefined {
+  return config.snitching.channelId ?? config.moderation.logChannelId ?? config.vacation.reportChannelId ?? config.discord.allowedChannelIds[0];
+}
+
+function snitchCooldownRemainingSeconds(userId: string): number {
+  const until = snitchCooldowns.get(userId) ?? 0;
+  return Math.max(0, Math.ceil((until - Date.now()) / 1000));
+}
+
+function rememberSnitchCooldown(userId: string): void {
+  if (config.snitching.cooldownSeconds <= 0) return;
+  snitchCooldowns.set(userId, Date.now() + config.snitching.cooldownSeconds * 1000);
 }
 
 async function sendToDiscordChannel(channelId: string | undefined, content: string): Promise<boolean> {

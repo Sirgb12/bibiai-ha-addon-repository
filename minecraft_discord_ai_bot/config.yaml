@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.2.7"
+version: "1.2.8"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -37,6 +37,13 @@ options:
   max_memory_entry_length: 500
   vision_enabled: true
   max_image_bytes: 8388608
+  snitching_enabled: true
+  snitch_channel_id: ""
+  snitch_allow_user_reports: true
+  snitch_report_moderation_events: true
+  snitch_auto_punish_enabled: true
+  snitch_timeout_minutes: 3
+  snitch_cooldown_seconds: 300
   moderation_enabled: true
   moderation_log_channel_id: ""
   moderation_min_timeout_minutes: 1
@@ -125,6 +132,13 @@ schema:
   max_memory_entry_length: int
   vision_enabled: bool
   max_image_bytes: int
+  snitching_enabled: bool
+  snitch_channel_id: str
+  snitch_allow_user_reports: bool
+  snitch_report_moderation_events: bool
+  snitch_auto_punish_enabled: bool
+  snitch_timeout_minutes: int
+  snitch_cooldown_seconds: int
   moderation_enabled: bool
   moderation_log_channel_id: str
   moderation_min_timeout_minutes: int

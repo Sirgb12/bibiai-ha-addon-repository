@@ -8,6 +8,7 @@ export type EventLogType =
   | "minecraft_recovery"
   | "minecraft_diagnostics"
   | "moderation"
+  | "snitch_report"
   | "weekly_report"
   | "vacation_report";
 

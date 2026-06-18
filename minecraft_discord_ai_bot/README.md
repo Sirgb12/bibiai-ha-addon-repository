@@ -10,6 +10,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 
 - `/ask prompt:<text>`: talk to the AI operator. It can check server status, and for authorized operators it can run read/safe commands.
 - `/join`: show the server IP, modpack link, and install steps for new players.
+- `/snitch user:<user> reason:<text>`: let a member report someone to BibiAI. When enabled, BibiAI logs the report and applies a short timeout if it can safely moderate that user.
 - `/mc status`: check TCP, RCON, players, TPS/MSPT if supported by your server, and version.
 - `/mc diagnostics`: run deeper operator-only diagnostics, including recent logs when `MC_LOG_PATH` is configured.
 - `/mc start`: start the server through the configured PebbleHost panel API.
@@ -120,6 +121,11 @@ Recommended:
 - `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
 - `VISION_ENABLED`: enables image attachment understanding. Defaults to `true`.
 - `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
+- `SNITCHING_ENABLED`: enables `/snitch` reports.
+- `SNITCH_CHANNEL_ID`: optional channel for snitch reports. Falls back to moderation/report channels.
+- `SNITCH_AUTO_PUNISH_ENABLED`: lets `/snitch` apply a short timeout when BibiAI has permission.
+- `SNITCH_TIMEOUT_MINUTES`: timeout length for snitch reports. Defaults to 3 minutes.
+- `SNITCH_COOLDOWN_SECONDS`: per-user snitch cooldown. Defaults to 300 seconds.
 - `MODERATION_ENABLED`: enables 1-5 minute Discord timeouts for obvious configured rule breaks.
 - `MODERATION_LOG_CHANNEL_ID`: optional channel for moderation notices.
 - `MINECRAFT_REPORT_CHANNEL_ID`: optional channel for Minecraft monitor alerts and weekly reports.
@@ -266,6 +272,28 @@ or mention the bot while attaching an image:
 
 The bot sends image bytes directly to Gemini as inline image data. Keep images below `MAX_IMAGE_BYTES`.
 
+## Snitching
+
+Use `/snitch` when a member needs to report someone while staff are away:
+
+```text
+/snitch user:@Somebody reason:spamming BibiAI evidence:https://discord.com/channels/...
+```
+
+If `snitch_auto_punish_enabled=true`, BibiAI applies the configured short timeout. It will not punish bots, itself, operators/admins, or anyone above its Discord role. Every snitch report is written to the event log and sent to `snitch_channel_id`, then `moderation_log_channel_id`, then the first allowed bot channel.
+
+Home Assistant example:
+
+```yaml
+snitching_enabled: true
+snitch_channel_id: "123456789012345678"
+snitch_allow_user_reports: true
+snitch_report_moderation_events: true
+snitch_auto_punish_enabled: true
+snitch_timeout_minutes: 3
+snitch_cooldown_seconds: 300
+```
+
 ## New Player Join Help
 
 Use `/join` to show new players the configured server address, modpack, and install steps.
@@ -410,6 +438,7 @@ weekly_report_hour_utc: 18
 /mc start
 /mc recover
 /join
+/snitch user:@Somebody reason:breaking the rules evidence:https://discord.com/channels/...
 /vacation status
 /moderation check user:@Somebody
 /ask prompt: TPS is low, check status and do safe fixes only.
