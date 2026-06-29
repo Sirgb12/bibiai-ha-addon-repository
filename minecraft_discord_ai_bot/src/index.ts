@@ -27,6 +27,7 @@ import { MinecraftService } from "./minecraft/MinecraftService.js";
 import { formatJoinInfo, looksLikeJoinHelpRequest } from "./onboarding/JoinInfo.js";
 import { WeeklyReporter } from "./reports/WeeklyReporter.js";
 import { evaluateSnitchReport, SnitchEvaluation, SnitchHistoryItem } from "./snitch/SnitchEvaluator.js";
+import { BotGrudgeStore, detectBotDisrespect, formatGrudgeRetaliation } from "./social/BotGrudgeStore.js";
 import { splitDiscordText, truncate } from "./util/text.js";
 import { VacationManager } from "./vacation/VacationManager.js";
 import { SholomPlayer } from "./voice/SholomPlayer.js";
@@ -56,9 +57,10 @@ type SnitchEvidenceFile = {
 const minecraft = new MinecraftService();
 const memory = new MemoryStore();
 const conversationMemory = new ConversationMemoryStore();
+const grudges = new BotGrudgeStore();
 const events = new EventLogStore();
 const moderation = new ModerationService(events);
-const agent = new GeminiMinecraftAgent(minecraft, memory, conversationMemory);
+const agent = new GeminiMinecraftAgent(minecraft, memory, conversationMemory, grudges);
 const pendingPlans = new Map<string, PendingPlan>();
 const snitchCooldowns = new Map<string, number>();
 const sholomPlayer = new SholomPlayer();
@@ -109,6 +111,7 @@ client.on(Events.MessageCreate, async (message) => {
     if (message.author.bot || !client.user) return;
     if (!isAllowedChannel(message.channelId)) return;
     noteHumanActivity(message.channelId);
+    const handledDisrespect = await handleBotDisrespect(message, client.user.id);
 
     const moderationAction = await moderation.moderate(message, client.user.id, hasOperatorAccess(message.member));
     if (moderationAction) {
@@ -129,10 +132,11 @@ client.on(Events.MessageCreate, async (message) => {
     }
 
     if (await sholomPlayer.handleMessage(message)) return;
+    if (handledDisrespect && isBareBotDisrespect(message.content, client.user.id)) return;
 
     if (!message.mentions.has(client.user)) {
       await recordObservedChat(message);
-      await maybeChimeIn(message);
+      if (!handledDisrespect) await maybeChimeIn(message);
       return;
     }
 
@@ -833,6 +837,77 @@ async function replyInChunks(message: Message, text: string): Promise<void> {
   for (const chunk of chunks.length ? chunks : ["(empty response)"]) {
     await message.reply(chunk);
   }
+}
+
+async function handleBotDisrespect(message: Message, botId: string): Promise<boolean> {
+  try {
+    const disrespect = detectBotDisrespect(message.content, botId);
+    if (!disrespect) return false;
+
+    const entry = await grudges.recordDisrespect({
+      userId: message.author.id,
+      userLabel: userLabel(message.author.id, message.author.username),
+      insult: disrespect.insult
+    });
+
+    if (!entry) return false;
+
+    if (await grudges.canRetaliate(entry)) {
+      const response = formatGrudgeRetaliation(entry);
+      await message.reply({
+        content: response,
+        allowedMentions: { parse: [] }
+      });
+      await grudges.markRetaliated(message.author.id);
+      await recordConversationTurn({
+        source: "grudge",
+        userId: message.author.id,
+        username: message.author.username,
+        channelId: message.channelId,
+        prompt: message.content,
+        response
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.warn(`Could not handle BibiAI disrespect memory: ${errorMessage(error)}`);
+    return false;
+  }
+}
+
+function isBareBotDisrespect(content: string, botId: string): boolean {
+  if (!detectBotDisrespect(content, botId)) return false;
+
+  const cleaned = content
+    .replace(new RegExp(`<@!?${botId}>`, "g"), "")
+    .replace(/\bbibi\s*ai\b/gi, "")
+    .replace(/\bbibiai\b/gi, "")
+    .replace(/\bthis bot\b/gi, "")
+    .replace(/\bthe bot\b/gi, "")
+    .replace(/\bbot\b/gi, "")
+    .replace(/\bbad\b/gi, "")
+    .replace(/\bfat\s*ass\b/gi, "")
+    .replace(/\bfatass\b/gi, "")
+    .replace(/\bfatty\b/gi, "")
+    .replace(/\bfuck\s+(?:you|u|off)\b/gi, "")
+    .replace(/\bfuck\b/gi, "")
+    .replace(/\bscrew\s+(?:you|u)\b/gi, "")
+    .replace(/\bshut up\b/gi, "")
+    .replace(/\bstupid\b/gi, "")
+    .replace(/\bdumb\b/gi, "")
+    .replace(/\bidiot\b/gi, "")
+    .replace(/\bmoron\b/gi, "")
+    .replace(/\buseless\b/gi, "")
+    .replace(/\btrash\b/gi, "")
+    .replace(/\bloser\b/gi, "")
+    .replace(/\bclown\b/gi, "")
+    .replace(/\bsucks?\b/gi, "")
+    .replace(/\b(?:you|u|ur|are|is|a|an|the|and|but|lol|lmao)\b/gi, "")
+    .replace(/[^a-z0-9]+/gi, "")
+    .trim();
+
+  return cleaned.length === 0;
 }
 
 function noteHumanActivity(channelId: string): void {

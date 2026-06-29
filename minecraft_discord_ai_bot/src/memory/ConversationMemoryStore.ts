@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { config } from "../config.js";
 
-export type ConversationSource = "mention" | "slash" | "auto_reply" | "observed_chat" | "chime" | "revive";
+export type ConversationSource = "mention" | "slash" | "auto_reply" | "observed_chat" | "chime" | "revive" | "grudge";
 
 export type ConversationTurn = {
   id: string;

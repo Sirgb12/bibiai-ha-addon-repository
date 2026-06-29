@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.3.4"
+version: "1.3.5"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -63,6 +63,12 @@ options:
   chat_revive_check_interval_minutes: 30
   chat_revive_use_everyone: true
   chat_revive_message: "The Honda Fit Republic requests signs of life. What is everyone building, plotting, or blaming on hummingbirds today?"
+  grudge_enabled: true
+  grudge_path: "/data/bibiai-grudges.json"
+  grudge_retaliation_enabled: true
+  grudge_retaliation_cooldown_minutes: 10
+  grudge_max_entries: 500
+  grudge_max_prompt_chars: 1200
   vision_enabled: true
   max_image_bytes: 8388608
   max_video_bytes: 20971520
@@ -191,6 +197,12 @@ schema:
   chat_revive_check_interval_minutes: int
   chat_revive_use_everyone: bool
   chat_revive_message: str
+  grudge_enabled: bool
+  grudge_path: str
+  grudge_retaliation_enabled: bool
+  grudge_retaliation_cooldown_minutes: int
+  grudge_max_entries: int
+  grudge_max_prompt_chars: int
   vision_enabled: bool
   max_image_bytes: int
   max_video_bytes: int

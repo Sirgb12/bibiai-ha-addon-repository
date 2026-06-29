@@ -54,6 +54,12 @@ export CHAT_REVIVE_COOLDOWN_MINUTES="$(bashio::config 'chat_revive_cooldown_minu
 export CHAT_REVIVE_CHECK_INTERVAL_MINUTES="$(bashio::config 'chat_revive_check_interval_minutes')"
 export CHAT_REVIVE_USE_EVERYONE="$(bashio::config 'chat_revive_use_everyone')"
 export CHAT_REVIVE_MESSAGE="$(bashio::config 'chat_revive_message')"
+export GRUDGE_ENABLED="$(bashio::config 'grudge_enabled')"
+export GRUDGE_PATH="$(bashio::config 'grudge_path')"
+export GRUDGE_RETALIATION_ENABLED="$(bashio::config 'grudge_retaliation_enabled')"
+export GRUDGE_RETALIATION_COOLDOWN_MINUTES="$(bashio::config 'grudge_retaliation_cooldown_minutes')"
+export GRUDGE_MAX_ENTRIES="$(bashio::config 'grudge_max_entries')"
+export GRUDGE_MAX_PROMPT_CHARS="$(bashio::config 'grudge_max_prompt_chars')"
 
 export VISION_ENABLED="$(bashio::config 'vision_enabled')"
 export MAX_IMAGE_BYTES="$(bashio::config 'max_image_bytes')"

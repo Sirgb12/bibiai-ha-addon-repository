@@ -48,12 +48,17 @@ const botInsultPatterns = [
   /\bfuck\s+(?:you|u|off)\b/i,
   /\bfuck\s+(?:bibiai|this bot|the bot)\b/i,
   /\bscrew\s+(?:you|u|bibiai|this bot|the bot)\b/i,
+  /\bfat\s*ass\b/i,
+  /\bfatass\b/i,
+  /\bfatty\b/i,
   /\bstupid\b/i,
   /\bdumb\b/i,
   /\bidiot\b/i,
   /\bmoron\b/i,
   /\buseless\b/i,
   /\btrash\b/i,
+  /\bloser\b/i,
+  /\bclown\b/i,
   /\bshut up\b/i
 ];
 

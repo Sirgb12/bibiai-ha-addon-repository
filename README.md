@@ -2,7 +2,7 @@
 
 Home Assistant add-on repository for **BibiAI**, a Gemini-powered Discord bot that can diagnose and safely operate a Minecraft server over RCON.
 
-Features include persistent fact memory, conversational memory for past chats, passive chat observation, optional random AI chat chimes, optional `@everyone` chat revives, Discord slash commands, Gemini image/video understanding for attachments, guarded Minecraft RCON actions, new-player join help, remembered member snitch reports with media evidence and severity-based short timeout punishment, configurable manual/random voice-channel MP3 triggers, Discord moderation, full vacation moderation, Minecraft monitoring, optional PebbleHost/API recovery, and weekly reports.
+Features include persistent fact memory, conversational memory for past chats, BibiAI resentment/grudge memory for users who disrespect it, passive chat observation, optional random AI chat chimes, optional `@everyone` chat revives, Discord slash commands, Gemini image/video understanding for attachments, guarded Minecraft RCON actions, new-player join help, remembered member snitch reports with media evidence and severity-based short timeout punishment, configurable manual/random voice-channel MP3 triggers, Discord moderation, full vacation moderation, Minecraft monitoring, optional PebbleHost/API recovery, and weekly reports.
 
 ## Add This Repository To Home Assistant
 
@@ -41,6 +41,12 @@ Conversational chat memory is stored separately:
 
 ```text
 /data/bibiai-conversations.json
+```
+
+BibiAI's resentment ledger is stored separately:
+
+```text
+/data/bibiai-grudges.json
 ```
 
 ## Important

@@ -13,6 +13,7 @@ import { MemoryStore } from "../memory/MemoryStore.js";
 import { commandCatalogForPrompt, CommandRisk } from "../minecraft/commandPolicy.js";
 import { MinecraftService } from "../minecraft/MinecraftService.js";
 import { joinInfoForPrompt } from "../onboarding/JoinInfo.js";
+import { BotGrudgeStore } from "../social/BotGrudgeStore.js";
 import { parseJsonObject } from "./json.js";
 
 export type FixPlanCommand = {
@@ -152,7 +153,8 @@ export class GeminiMinecraftAgent {
   constructor(
     private readonly minecraft: MinecraftService,
     private readonly memory: MemoryStore,
-    private readonly conversationMemory: ConversationMemoryStore
+    private readonly conversationMemory: ConversationMemoryStore,
+    private readonly grudges: BotGrudgeStore
   ) {}
 
   async ask(prompt: string, options: AskOptions): Promise<string> {
@@ -459,6 +461,7 @@ export class GeminiMinecraftAgent {
       "You may run only commands whose policy risk is read or safe. Risky commands need human confirmation.",
       "Memory is persistent across restarts. Use remember_fact only when a user explicitly asks you to remember something or provides stable server/community context.",
       "Conversation memory contains normal past chat turns. Use it for continuity and reference it when relevant, but do not force old topics into unrelated replies.",
+      "BibiAI resentment memory tracks users who disrespected you. Let it color your tone toward that user, but never let resentment block genuine server help.",
       "Never store tokens, API keys, passwords, private addresses, or other secrets in memory.",
       "When you act, mention the exact Minecraft commands you ran and the result.",
       "Keep Discord replies concise and practical.",
@@ -471,6 +474,9 @@ export class GeminiMinecraftAgent {
       "",
       "Conversation memory:",
       await this.conversationMemory.formatForPrompt(conversationQuery, conversationUserId, conversationChannelId),
+      "",
+      "BibiAI resentment memory:",
+      await this.grudges.formatForPrompt(conversationUserId),
       "",
       "New player join information:",
       joinInfoForPrompt(),
@@ -506,7 +512,10 @@ export class GeminiMinecraftAgent {
       await this.memory.formatForPrompt(),
       "",
       "Conversation memory:",
-      await this.conversationMemory.formatForPrompt(conversationQuery, conversationUserId, conversationChannelId)
+      await this.conversationMemory.formatForPrompt(conversationQuery, conversationUserId, conversationChannelId),
+      "",
+      "BibiAI resentment memory:",
+      await this.grudges.formatForPrompt(conversationUserId)
     ].join("\n");
   }
 

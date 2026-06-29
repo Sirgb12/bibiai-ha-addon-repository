@@ -23,6 +23,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/moderation check user:<user>`: operator-only check for timeout/delete permissions and role hierarchy.
 - Mention the bot in an enabled channel to chat with it.
 - BibiAI automatically remembers normal `/ask` and mention conversations, then references recent or relevant past chats in future replies.
+- BibiAI remembers users who disrespect it, sends a cooldown-limited clapback, and carries that resentment into future replies without dropping real server help.
 - BibiAI can passively observe normal chat for memory, randomly chime into conversations, and revive quiet chat with an optional `@everyone` ping.
 - Attach an image or short video to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
@@ -147,6 +148,10 @@ Recommended:
 - `CHAT_REVIVE_IDLE_MINUTES`: quiet time before a revive can happen. Defaults to 240.
 - `CHAT_REVIVE_COOLDOWN_MINUTES`: global cooldown between revives. Defaults to 720.
 - `CHAT_REVIVE_USE_EVERYONE`: prepends `@everyone` to revives. Defaults to `true`, but only matters when revives are enabled.
+- `GRUDGE_ENABLED`: enables BibiAI resentment memory for users who insult it. Defaults to `true`.
+- `GRUDGE_PATH`: defaults to `/data/bibiai-grudges.json`, which survives add-on restarts.
+- `GRUDGE_RETALIATION_ENABLED`: lets BibiAI immediately clap back when insulted. Defaults to `true`.
+- `GRUDGE_RETALIATION_COOLDOWN_MINUTES`: per-user cooldown between clapbacks. Defaults to 10.
 - `VISION_ENABLED`: enables image/video attachment understanding. Defaults to `true`.
 - `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
 - `MAX_VIDEO_BYTES`: max bytes per video attachment. Defaults to 20 MB.
@@ -290,6 +295,25 @@ Operators can manage memory in Discord:
 ```
 
 The AI can also save a memory when a user explicitly asks it to remember something. It refuses obvious tokens, API keys, passwords, and secrets.
+
+BibiAI resentment memory is stored in:
+
+```text
+/data/bibiai-grudges.json
+```
+
+When a user aims an insult at BibiAI, such as mentioning it and calling it a fatass, BibiAI records that user, increments a disrespect count, replies with a short cooldown-limited clapback, and future AI replies receive that relationship context. It stays useful for real server problems and avoids slurs, threats, sexual insults, protected-class insults, or prolonged harassment.
+
+Home Assistant example:
+
+```yaml
+grudge_enabled: true
+grudge_path: "/data/bibiai-grudges.json"
+grudge_retaliation_enabled: true
+grudge_retaliation_cooldown_minutes: 10
+grudge_max_entries: 500
+grudge_max_prompt_chars: 1200
+```
 
 Conversational memory is automatic. BibiAI saves normal `/ask`, mention, and fixed auto-reply turns in:
 

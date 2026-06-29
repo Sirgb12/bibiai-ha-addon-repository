@@ -96,6 +96,12 @@ const envSchema = z.object({
     .string()
     .max(500)
     .default("The Honda Fit Republic requests signs of life. What is everyone building, plotting, or blaming on hummingbirds today?"),
+  GRUDGE_ENABLED: z.string().optional(),
+  GRUDGE_PATH: z.string().default("/data/bibiai-grudges.json"),
+  GRUDGE_RETALIATION_ENABLED: z.string().optional(),
+  GRUDGE_RETALIATION_COOLDOWN_MINUTES: z.coerce.number().int().min(0).max(10080).default(10),
+  GRUDGE_MAX_ENTRIES: z.coerce.number().int().min(1).max(5000).default(500),
+  GRUDGE_MAX_PROMPT_CHARS: z.coerce.number().int().min(300).max(5000).default(1200),
   VISION_ENABLED: z.string().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
   MAX_VIDEO_BYTES: z.coerce.number().int().min(1024).max(100 * 1024 * 1024).default(20 * 1024 * 1024),
@@ -302,6 +308,14 @@ export const config = {
     reviveCheckIntervalMinutes: env.CHAT_REVIVE_CHECK_INTERVAL_MINUTES,
     reviveUseEveryone: boolFromEnv(env.CHAT_REVIVE_USE_EVERYONE, true),
     reviveMessage: env.CHAT_REVIVE_MESSAGE
+  },
+  grudges: {
+    enabled: boolFromEnv(env.GRUDGE_ENABLED, true),
+    path: env.GRUDGE_PATH,
+    retaliationEnabled: boolFromEnv(env.GRUDGE_RETALIATION_ENABLED, true),
+    retaliationCooldownMinutes: env.GRUDGE_RETALIATION_COOLDOWN_MINUTES,
+    maxEntries: env.GRUDGE_MAX_ENTRIES,
+    maxPromptChars: env.GRUDGE_MAX_PROMPT_CHARS
   },
   vision: {
     enabled: boolFromEnv(env.VISION_ENABLED, true),
