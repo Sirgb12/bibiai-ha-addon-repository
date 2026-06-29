@@ -73,6 +73,13 @@ const envSchema = z.object({
   MEMORY_PATH: z.string().default("/data/bibiai-memory.json"),
   MAX_MEMORY_ITEMS: z.coerce.number().int().min(1).max(200).default(40),
   MAX_MEMORY_ENTRY_LENGTH: z.coerce.number().int().min(80).max(2000).default(500),
+  CONVERSATION_MEMORY_ENABLED: z.string().optional(),
+  CONVERSATION_MEMORY_PATH: z.string().default("/data/bibiai-conversations.json"),
+  CONVERSATION_MEMORY_MAX_TURNS: z.coerce.number().int().min(10).max(10000).default(1000),
+  CONVERSATION_MEMORY_RECENT_TURNS: z.coerce.number().int().min(0).max(100).default(12),
+  CONVERSATION_MEMORY_RELEVANT_TURNS: z.coerce.number().int().min(0).max(100).default(12),
+  CONVERSATION_MEMORY_MAX_ENTRY_LENGTH: z.coerce.number().int().min(200).max(5000).default(2000),
+  CONVERSATION_MEMORY_MAX_PROMPT_CHARS: z.coerce.number().int().min(1000).max(20000).default(6000),
   VISION_ENABLED: z.string().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
   MAX_VIDEO_BYTES: z.coerce.number().int().min(1024).max(100 * 1024 * 1024).default(20 * 1024 * 1024),
@@ -255,6 +262,15 @@ export const config = {
     path: env.MEMORY_PATH,
     maxItems: env.MAX_MEMORY_ITEMS,
     maxEntryLength: env.MAX_MEMORY_ENTRY_LENGTH
+  },
+  conversationMemory: {
+    enabled: boolFromEnv(env.CONVERSATION_MEMORY_ENABLED, true),
+    path: env.CONVERSATION_MEMORY_PATH,
+    maxTurns: env.CONVERSATION_MEMORY_MAX_TURNS,
+    recentTurns: env.CONVERSATION_MEMORY_RECENT_TURNS,
+    relevantTurns: env.CONVERSATION_MEMORY_RELEVANT_TURNS,
+    maxEntryLength: env.CONVERSATION_MEMORY_MAX_ENTRY_LENGTH,
+    maxPromptChars: env.CONVERSATION_MEMORY_MAX_PROMPT_CHARS
   },
   vision: {
     enabled: boolFromEnv(env.VISION_ENABLED, true),

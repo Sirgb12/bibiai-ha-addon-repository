@@ -8,6 +8,7 @@ import {
 } from "@google/genai";
 import { z } from "zod";
 import { config } from "../config.js";
+import { ConversationMemoryStore } from "../memory/ConversationMemoryStore.js";
 import { MemoryStore } from "../memory/MemoryStore.js";
 import { commandCatalogForPrompt, CommandRisk } from "../minecraft/commandPolicy.js";
 import { MinecraftService } from "../minecraft/MinecraftService.js";
@@ -27,6 +28,14 @@ export type FixPlan = {
   diagnosis: string;
   commands: FixPlanCommand[];
   notes: string[];
+};
+
+type AskOptions = {
+  allowCommandExecution: boolean;
+  userLabel: string;
+  userId?: string;
+  channelId?: string | null;
+  mediaParts?: Part[];
 };
 
 const rawFixPlanSchema = z.object({
@@ -140,13 +149,11 @@ export class GeminiMinecraftAgent {
 
   constructor(
     private readonly minecraft: MinecraftService,
-    private readonly memory: MemoryStore
+    private readonly memory: MemoryStore,
+    private readonly conversationMemory: ConversationMemoryStore
   ) {}
 
-  async ask(
-    prompt: string,
-    options: { allowCommandExecution: boolean; userLabel: string; mediaParts?: Part[] }
-  ): Promise<string> {
+  async ask(prompt: string, options: AskOptions): Promise<string> {
     const contents: Content[] = [
       {
         role: "user",
@@ -163,7 +170,10 @@ export class GeminiMinecraftAgent {
           systemInstruction: await this.instructions(
             options.allowCommandExecution
               ? ""
-              : "This user is not an operator. You may inspect status, but do not execute Minecraft commands. Suggest commands for an operator instead."
+              : "This user is not an operator. You may inspect status, but do not execute Minecraft commands. Suggest commands for an operator instead.",
+            prompt,
+            options.userId,
+            options.channelId
           ),
           tools: [{ functionDeclarations: toolDeclarations }],
           toolConfig: {
@@ -270,7 +280,7 @@ export class GeminiMinecraftAgent {
 
   private async handleToolCall(
     call: FunctionCall,
-    options: { allowCommandExecution: boolean; userLabel: string },
+    options: AskOptions,
     safeCommandsRun: number
   ): Promise<{ countedAsSafeCommand: boolean; response: Record<string, unknown> }> {
     const args = call.args ?? {};
@@ -387,13 +397,19 @@ export class GeminiMinecraftAgent {
     };
   }
 
-  private async instructions(extra = ""): Promise<string> {
+  private async instructions(
+    extra = "",
+    conversationQuery = "",
+    conversationUserId?: string,
+    conversationChannelId?: string | null
+  ): Promise<string> {
     return [
       "You are an AI Minecraft server operator assistant inside a Discord bot.",
       "Help diagnose and fix common Minecraft server issues through RCON only.",
       "Never invent shell access, never ask for passwords, and never run commands outside the catalog.",
       "You may run only commands whose policy risk is read or safe. Risky commands need human confirmation.",
       "Memory is persistent across restarts. Use remember_fact only when a user explicitly asks you to remember something or provides stable server/community context.",
+      "Conversation memory contains normal past chat turns. Use it for continuity and reference it when relevant, but do not force old topics into unrelated replies.",
       "Never store tokens, API keys, passwords, private addresses, or other secrets in memory.",
       "When you act, mention the exact Minecraft commands you ran and the result.",
       "Keep Discord replies concise and practical.",
@@ -403,6 +419,9 @@ export class GeminiMinecraftAgent {
       "",
       "Persistent memory:",
       await this.memory.formatForPrompt(),
+      "",
+      "Conversation memory:",
+      await this.conversationMemory.formatForPrompt(conversationQuery, conversationUserId, conversationChannelId),
       "",
       "New player join information:",
       joinInfoForPrompt(),

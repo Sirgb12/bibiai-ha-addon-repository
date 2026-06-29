@@ -22,6 +22,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/vacation status/checkin`: show vacation mode status and operator check-ins.
 - `/moderation check user:<user>`: operator-only check for timeout/delete permissions and role hierarchy.
 - Mention the bot in an enabled channel to chat with it.
+- BibiAI automatically remembers normal `/ask` and mention conversations, then references recent or relevant past chats in future replies.
 - Attach an image or short video to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
 - Minecraft monitor alerts, optional PebbleHost/API recovery calls, and weekly bot-observed server reports.
@@ -129,6 +130,12 @@ Recommended:
 - `MC_LOG_PATH`: path to `logs/latest.log` for better AI diagnosis.
 - `MEMORY_ENABLED`: enables persistent memory. Defaults to `true`.
 - `MEMORY_PATH`: defaults to `/data/bibiai-memory.json`, which survives add-on restarts.
+- `CONVERSATION_MEMORY_ENABLED`: enables automatic past-chat memory. Defaults to `true`.
+- `CONVERSATION_MEMORY_PATH`: defaults to `/data/bibiai-conversations.json`, which survives add-on restarts.
+- `CONVERSATION_MEMORY_MAX_TURNS`: maximum saved chat turns. Defaults to 1000.
+- `CONVERSATION_MEMORY_RECENT_TURNS`: recent turns sent into each AI request. Defaults to 12.
+- `CONVERSATION_MEMORY_RELEVANT_TURNS`: older relevant turns sent into each AI request. Defaults to 12.
+- `CONVERSATION_MEMORY_MAX_PROMPT_CHARS`: max conversation-memory context added to a Gemini prompt. Defaults to 6000.
 - `VISION_ENABLED`: enables image/video attachment understanding. Defaults to `true`.
 - `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
 - `MAX_VIDEO_BYTES`: max bytes per video attachment. Defaults to 20 MB.
@@ -252,7 +259,9 @@ The add-on automatically reads that file on startup. You do not need to keep `bo
 
 ## Memory
 
-BibiAI stores memory in:
+BibiAI has two memory systems.
+
+Explicit fact memory is stored in:
 
 ```text
 /data/bibiai-memory.json
@@ -270,6 +279,26 @@ Operators can manage memory in Discord:
 ```
 
 The AI can also save a memory when a user explicitly asks it to remember something. It refuses obvious tokens, API keys, passwords, and secrets.
+
+Conversational memory is automatic. BibiAI saves normal `/ask`, mention, and fixed auto-reply turns in:
+
+```text
+/data/bibiai-conversations.json
+```
+
+Each future AI reply receives a bounded slice of recent and relevant older conversations, so BibiAI can say things like "last time we talked about the modpack..." without stuffing the entire history into Gemini. It skips turns that look like they contain tokens, API keys, passwords, or secrets.
+
+Home Assistant example:
+
+```yaml
+conversation_memory_enabled: true
+conversation_memory_path: "/data/bibiai-conversations.json"
+conversation_memory_max_turns: 1000
+conversation_memory_recent_turns: 12
+conversation_memory_relevant_turns: 12
+conversation_memory_max_entry_length: 2000
+conversation_memory_max_prompt_chars: 6000
+```
 
 ## Images And Videos
 

@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.3.2"
+version: "1.3.3"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -43,6 +43,13 @@ options:
   memory_path: "/data/bibiai-memory.json"
   max_memory_items: 40
   max_memory_entry_length: 500
+  conversation_memory_enabled: true
+  conversation_memory_path: "/data/bibiai-conversations.json"
+  conversation_memory_max_turns: 1000
+  conversation_memory_recent_turns: 12
+  conversation_memory_relevant_turns: 12
+  conversation_memory_max_entry_length: 2000
+  conversation_memory_max_prompt_chars: 6000
   vision_enabled: true
   max_image_bytes: 8388608
   max_video_bytes: 20971520
@@ -151,6 +158,13 @@ schema:
   memory_path: str
   max_memory_items: int
   max_memory_entry_length: int
+  conversation_memory_enabled: bool
+  conversation_memory_path: str
+  conversation_memory_max_turns: int
+  conversation_memory_recent_turns: int
+  conversation_memory_relevant_turns: int
+  conversation_memory_max_entry_length: int
+  conversation_memory_max_prompt_chars: int
   vision_enabled: bool
   max_image_bytes: int
   max_video_bytes: int

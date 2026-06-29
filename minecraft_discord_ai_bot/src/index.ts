@@ -19,6 +19,7 @@ import { config } from "./config.js";
 import { GeminiMinecraftAgent, FixPlan } from "./ai/GeminiMinecraftAgent.js";
 import { commands } from "./discord/commands.js";
 import { EventLogStore } from "./events/EventLogStore.js";
+import { ConversationMemoryStore, ConversationSource } from "./memory/ConversationMemoryStore.js";
 import { MemoryStore } from "./memory/MemoryStore.js";
 import { ModerationAction, ModerationService } from "./moderation/ModerationService.js";
 import { MinecraftMonitor } from "./minecraft/MinecraftMonitor.js";
@@ -54,9 +55,10 @@ type SnitchEvidenceFile = {
 
 const minecraft = new MinecraftService();
 const memory = new MemoryStore();
+const conversationMemory = new ConversationMemoryStore();
 const events = new EventLogStore();
 const moderation = new ModerationService(events);
-const agent = new GeminiMinecraftAgent(minecraft, memory);
+const agent = new GeminiMinecraftAgent(minecraft, memory, conversationMemory);
 const pendingPlans = new Map<string, PendingPlan>();
 const snitchCooldowns = new Map<string, number>();
 const sholomPlayer = new SholomPlayer();
@@ -125,7 +127,16 @@ client.on(Events.MessageCreate, async (message) => {
     if (!message.mentions.has(client.user)) return;
 
     if (config.onboarding.autoReplyEnabled && looksLikeJoinHelpRequest(message.content)) {
-      await message.reply(formatJoinInfo());
+      const response = formatJoinInfo();
+      await message.reply(response);
+      await recordConversationTurn({
+        source: "auto_reply",
+        userId: message.author.id,
+        username: message.author.username,
+        channelId: message.channelId,
+        prompt: message.content,
+        response
+      });
       return;
     }
 
@@ -134,7 +145,16 @@ client.on(Events.MessageCreate, async (message) => {
       config.vacation.autoReplyEnabled &&
       vacationManager.looksLikeVacationHelpRequest(message.content)
     ) {
-      await message.reply(vacationManager.formatAutoReply());
+      const response = vacationManager.formatAutoReply();
+      await message.reply(response);
+      await recordConversationTurn({
+        source: "auto_reply",
+        userId: message.author.id,
+        username: message.author.username,
+        channelId: message.channelId,
+        prompt: message.content,
+        response
+      });
       return;
     }
 
@@ -153,9 +173,20 @@ client.on(Events.MessageCreate, async (message) => {
     const answer = await agent.ask(prompt || "Describe the attached media.", {
       allowCommandExecution: hasOperatorAccess(message.member),
       userLabel: userLabel(message.author.id, message.author.username),
+      userId: message.author.id,
+      channelId: message.channelId,
       mediaParts
     });
     await replyInChunks(message, answer);
+    await recordConversationTurn({
+      source: "mention",
+      userId: message.author.id,
+      username: message.author.username,
+      channelId: message.channelId,
+      prompt: prompt || "Describe the attached media.",
+      response: answer,
+      mediaCount: mediaParts.length
+    });
   } catch (error) {
     console.error(error);
     await message.reply(`Something broke while handling that: ${errorMessage(error)}`);
@@ -181,9 +212,20 @@ async function handleSlashCommand(interaction: ChatInputCommandInteraction): Pro
     const answer = await agent.ask(prompt, {
       allowCommandExecution: hasOperatorAccess(interaction.member),
       userLabel: userLabel(interaction.user.id, interaction.user.username),
+      userId: interaction.user.id,
+      channelId: interaction.channelId,
       mediaParts
     });
     await editWithChunks(interaction, answer);
+    await recordConversationTurn({
+      source: "slash",
+      userId: interaction.user.id,
+      username: interaction.user.username,
+      channelId: interaction.channelId,
+      prompt,
+      response: answer,
+      mediaCount: mediaParts.length
+    });
     return;
   }
 
@@ -780,6 +822,30 @@ async function replyInChunks(message: Message, text: string): Promise<void> {
   const chunks = splitDiscordText(text);
   for (const chunk of chunks.length ? chunks : ["(empty response)"]) {
     await message.reply(chunk);
+  }
+}
+
+async function recordConversationTurn(input: {
+  source: ConversationSource;
+  userId: string;
+  username: string;
+  channelId: string | null;
+  prompt: string;
+  response: string;
+  mediaCount?: number;
+}): Promise<void> {
+  try {
+    await conversationMemory.record({
+      source: input.source,
+      userId: input.userId,
+      userLabel: userLabel(input.userId, input.username),
+      channelId: input.channelId,
+      prompt: input.prompt,
+      response: input.response,
+      mediaCount: input.mediaCount
+    });
+  } catch (error) {
+    console.warn(`Could not record conversation memory: ${errorMessage(error)}`);
   }
 }
 
