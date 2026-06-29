@@ -23,6 +23,7 @@ The AI layer uses the Gemini API, so you can start with Google's Gemini free tie
 - `/moderation check user:<user>`: operator-only check for timeout/delete permissions and role hierarchy.
 - Mention the bot in an enabled channel to chat with it.
 - BibiAI automatically remembers normal `/ask` and mention conversations, then references recent or relevant past chats in future replies.
+- BibiAI can passively observe normal chat for memory, randomly chime into conversations, and revive quiet chat with an optional `@everyone` ping.
 - Attach an image or short video to `/ask` or to a bot mention and BibiAI can inspect it with Gemini vision.
 - Short Discord timeouts for obvious rule breaks: no porn/NSFW content, no edating, and no spamming BibiAI.
 - Minecraft monitor alerts, optional PebbleHost/API recovery calls, and weekly bot-observed server reports.
@@ -83,6 +84,7 @@ Gemini free-tier availability and limits are model-specific. If the bot gets quo
    - Use Slash Commands
    - Moderate Members, only if you want short timeout moderation
    - Manage Messages, only if you want BibiAI to delete rule-breaking messages during vacation mode
+   - Mention Everyone, only if you enable `chat_revive_use_everyone`
    - Connect and Speak, only if you want the `sholom` voice trigger
 
 ## Minecraft RCON Setup
@@ -136,6 +138,15 @@ Recommended:
 - `CONVERSATION_MEMORY_RECENT_TURNS`: recent turns sent into each AI request. Defaults to 12.
 - `CONVERSATION_MEMORY_RELEVANT_TURNS`: older relevant turns sent into each AI request. Defaults to 12.
 - `CONVERSATION_MEMORY_MAX_PROMPT_CHARS`: max conversation-memory context added to a Gemini prompt. Defaults to 6000.
+- `CHAT_OBSERVE_ENABLED`: lets BibiAI remember normal non-bot chat in allowed channels. Defaults to `true`.
+- `CHAT_CHIME_ENABLED`: lets BibiAI randomly chime into normal conversations. Defaults to `false`.
+- `CHAT_CHIME_PROBABILITY`: chance per eligible message to chime, before cooldown. Defaults to `0.06`.
+- `CHAT_CHIME_COOLDOWN_MINUTES`: per-channel cooldown between random chimes. Defaults to 45.
+- `CHAT_REVIVE_ENABLED`: lets BibiAI revive quiet chat on a timer. Defaults to `false`.
+- `CHAT_REVIVE_CHANNEL_ID`: channel for chat revives. If blank, BibiAI uses the most recently active allowed channel or the first allowed channel.
+- `CHAT_REVIVE_IDLE_MINUTES`: quiet time before a revive can happen. Defaults to 240.
+- `CHAT_REVIVE_COOLDOWN_MINUTES`: global cooldown between revives. Defaults to 720.
+- `CHAT_REVIVE_USE_EVERYONE`: prepends `@everyone` to revives. Defaults to `true`, but only matters when revives are enabled.
 - `VISION_ENABLED`: enables image/video attachment understanding. Defaults to `true`.
 - `MAX_IMAGE_BYTES`: max bytes per image attachment. Defaults to 8 MB.
 - `MAX_VIDEO_BYTES`: max bytes per video attachment. Defaults to 20 MB.
@@ -288,6 +299,8 @@ Conversational memory is automatic. BibiAI saves normal `/ask`, mention, and fix
 
 Each future AI reply receives a bounded slice of recent and relevant older conversations, so BibiAI can say things like "last time we talked about the modpack..." without stuffing the entire history into Gemini. It skips turns that look like they contain tokens, API keys, passwords, or secrets.
 
+When `chat_observe_enabled=true`, BibiAI also saves normal non-bot chat in allowed channels even when nobody mentions it. Those observed messages have no bot response attached, but they still help later replies understand what people were talking about.
+
 Home Assistant example:
 
 ```yaml
@@ -299,6 +312,30 @@ conversation_memory_relevant_turns: 12
 conversation_memory_max_entry_length: 2000
 conversation_memory_max_prompt_chars: 6000
 ```
+
+## Chat Presence
+
+Chat presence makes BibiAI feel less like a vending machine and more like a server resident.
+
+Home Assistant example:
+
+```yaml
+chat_observe_enabled: true
+chat_observe_min_message_length: 3
+chat_chime_enabled: true
+chat_chime_probability: 0.06
+chat_chime_cooldown_minutes: 45
+chat_chime_min_message_length: 12
+chat_revive_enabled: true
+chat_revive_channel_id: "123456789012345678"
+chat_revive_idle_minutes: 240
+chat_revive_cooldown_minutes: 720
+chat_revive_check_interval_minutes: 30
+chat_revive_use_everyone: true
+chat_revive_message: "The Honda Fit Republic requests signs of life. What is everyone building, plotting, or blaming on hummingbirds today?"
+```
+
+Random chimes never ping users, roles, `@here`, or `@everyone`. Chat revives only ping `@everyone` when `chat_revive_enabled=true` and `chat_revive_use_everyone=true`. The bot also needs Discord's **Mention Everyone** permission for the ping to work.
 
 ## Images And Videos
 

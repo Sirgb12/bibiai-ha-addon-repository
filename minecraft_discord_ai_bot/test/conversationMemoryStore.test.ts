@@ -67,4 +67,23 @@ describe("ConversationMemoryStore", () => {
     expect(turn).toBeNull();
     expect(await memory.recent()).toEqual([]);
   });
+
+  it("stores observed chat without a bot response", async () => {
+    const { ConversationMemoryStore } = await import("../src/memory/ConversationMemoryStore.js");
+    const memory = new ConversationMemoryStore(join(tempDir, "observed-conversations.json"));
+
+    const turn = await memory.record({
+      source: "observed_chat",
+      userId: "user-3",
+      userLabel: "Builder",
+      channelId: "channel-1",
+      prompt: "I am building the courthouse out of copper."
+    });
+
+    expect(turn?.response).toBe("");
+
+    const promptContext = await memory.formatForPrompt("what was Builder making?", "user-3", "channel-1");
+    expect(promptContext).toContain("Observed chat");
+    expect(promptContext).toContain("courthouse out of copper");
+  });
 });

@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 import { config } from "../config.js";
 
-export type ConversationSource = "mention" | "slash" | "auto_reply";
+export type ConversationSource = "mention" | "slash" | "auto_reply" | "observed_chat" | "chime" | "revive";
 
 export type ConversationTurn = {
   id: string;
@@ -28,7 +28,7 @@ type RecordTurnInput = {
   userLabel: string;
   channelId?: string | null;
   prompt: string;
-  response: string;
+  response?: string;
   mediaCount?: number;
 };
 
@@ -48,8 +48,9 @@ export class ConversationMemoryStore {
     if (!config.conversationMemory.enabled) return null;
 
     const prompt = cleanText(input.prompt);
-    const response = cleanText(input.response);
-    if (!prompt || !response) return null;
+    const response = cleanText(input.response ?? "");
+    if (!prompt) return null;
+    if (!response && input.source !== "observed_chat") return null;
 
     if (this.looksSecret(prompt) || this.looksSecret(response)) {
       console.warn("Conversation memory skipped a turn that looked like it contained a secret.");
@@ -169,9 +170,11 @@ function formatTurns(turns: ConversationTurn[]): string {
       const media = turn.mediaCount > 0 ? ` [${turn.mediaCount} media attachment(s)]` : "";
       return [
         `${index + 1}. ${turn.createdAt} ${turn.userLabel}${media}`,
-        `User: ${truncate(turn.prompt, 700)}`,
-        `BibiAI: ${truncate(turn.response, 700)}`
-      ].join("\n");
+        `${turn.source === "observed_chat" ? "Observed chat" : "User"}: ${truncate(turn.prompt, 700)}`,
+        turn.response ? `BibiAI: ${truncate(turn.response, 700)}` : undefined
+      ]
+        .filter(Boolean)
+        .join("\n");
     })
     .join("\n\n");
 }

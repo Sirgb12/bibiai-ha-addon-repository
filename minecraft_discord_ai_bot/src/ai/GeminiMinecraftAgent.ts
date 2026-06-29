@@ -38,6 +38,8 @@ type AskOptions = {
   mediaParts?: Part[];
 };
 
+type ChatPresenceKind = "chime" | "revive";
+
 const rawFixPlanSchema = z.object({
   title: z.string().min(1).max(80),
   diagnosis: z.string().min(1).max(900),
@@ -246,6 +248,53 @@ export class GeminiMinecraftAgent {
     return (response.text ?? "").trim().slice(0, 600);
   }
 
+  async createChatPresenceReply(input: {
+    kind: ChatPresenceKind;
+    context: string;
+    userLabel?: string;
+    userId?: string;
+    channelId?: string | null;
+  }): Promise<string> {
+    const prompt = [
+      input.kind === "revive"
+        ? "Write one short Discord chat revive message."
+        : "Write one short Discord message that naturally chimes into the current conversation.",
+      input.userLabel ? `Triggered near user: ${input.userLabel}` : undefined,
+      "Context:",
+      input.context,
+      "",
+      "Rules:",
+      "- Keep it under 300 characters.",
+      "- Stay in BibiAI's configured persona.",
+      "- Be funny or useful only if it fits the context.",
+      "- Do not include @everyone, @here, user mentions, role mentions, or markdown code blocks.",
+      "- Do not threaten moderation or claim to punish anyone.",
+      "- Do not pretend to see attachments unless the context explicitly describes them."
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const response = await this.client.models.generateContent({
+      model: config.gemini.model,
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: prompt }]
+        }
+      ],
+      config: {
+        systemInstruction: await this.chatPresenceInstructions(input.context, input.userId, input.channelId)
+      }
+    });
+
+    return cleanPresenceReply(
+      response.text ?? "",
+      input.kind === "revive"
+        ? config.chatPresence.reviveMessage
+        : "I have observed the conversation and, after careful governmental review, I am choosing to make it worse in a constructive way."
+    );
+  }
+
   async createFixPlan(issue: string, details: string): Promise<FixPlan> {
     const status = await this.minecraft.getStatus(true);
     const prompt = [
@@ -440,6 +489,27 @@ export class GeminiMinecraftAgent {
       .join("\n");
   }
 
+  private async chatPresenceInstructions(
+    conversationQuery: string,
+    conversationUserId?: string,
+    conversationChannelId?: string | null
+  ): Promise<string> {
+    return [
+      "You are BibiAI inside a Discord server.",
+      "You may casually participate in chat, but you are not currently diagnosing Minecraft or running server tools.",
+      "Never include @everyone, @here, role mentions, or user mentions. The application handles pings separately.",
+      "Do not moderate, threaten punishments, request private info, or ask for secrets.",
+      "Keep replies short enough to feel like a real Discord message.",
+      `Configured speaking style: ${config.discord.personaStyle}`,
+      "",
+      "Persistent memory:",
+      await this.memory.formatForPrompt(),
+      "",
+      "Conversation memory:",
+      await this.conversationMemory.formatForPrompt(conversationQuery, conversationUserId, conversationChannelId)
+    ].join("\n");
+  }
+
   private validatePlan(raw: z.infer<typeof rawFixPlanSchema>): FixPlan {
     return {
       title: raw.title,
@@ -496,4 +566,22 @@ export class GeminiMinecraftAgent {
       notes: ["Review the commands before running them."]
     });
   }
+}
+
+function cleanPresenceReply(text: string, fallback: string): string {
+  const cleaned = text
+    .replace(/@everyone/gi, "everyone")
+    .replace(/@here/gi, "here")
+    .replace(/<@&?\d+>/g, "")
+    .replace(/```[\s\S]*?```/g, "")
+    .trim()
+    .replace(/^["']|["']$/g, "")
+    .trim();
+
+  return truncateLocal(cleaned || fallback, 500);
+}
+
+function truncateLocal(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
 }

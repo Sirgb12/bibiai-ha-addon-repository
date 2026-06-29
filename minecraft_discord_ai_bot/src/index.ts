@@ -62,6 +62,10 @@ const agent = new GeminiMinecraftAgent(minecraft, memory, conversationMemory);
 const pendingPlans = new Map<string, PendingPlan>();
 const snitchCooldowns = new Map<string, number>();
 const sholomPlayer = new SholomPlayer();
+const lastHumanMessageAtByChannel = new Map<string, number>();
+const lastChimeAtByChannel = new Map<string, number>();
+const startedAt = Date.now();
+let lastChatReviveAt = 0;
 
 const client = new Client({
   intents: [
@@ -84,6 +88,7 @@ client.once(Events.ClientReady, async (readyClient) => {
   weeklyReporter.start();
   vacationManager.start();
   sholomPlayer.startRandom(readyClient);
+  startChatReviver();
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -103,6 +108,7 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     if (message.author.bot || !client.user) return;
     if (!isAllowedChannel(message.channelId)) return;
+    noteHumanActivity(message.channelId);
 
     const moderationAction = await moderation.moderate(message, client.user.id, hasOperatorAccess(message.member));
     if (moderationAction) {
@@ -124,7 +130,11 @@ client.on(Events.MessageCreate, async (message) => {
 
     if (await sholomPlayer.handleMessage(message)) return;
 
-    if (!message.mentions.has(client.user)) return;
+    if (!message.mentions.has(client.user)) {
+      await recordObservedChat(message);
+      await maybeChimeIn(message);
+      return;
+    }
 
     if (config.onboarding.autoReplyEnabled && looksLikeJoinHelpRequest(message.content)) {
       const response = formatJoinInfo();
@@ -825,13 +835,164 @@ async function replyInChunks(message: Message, text: string): Promise<void> {
   }
 }
 
+function noteHumanActivity(channelId: string): void {
+  lastHumanMessageAtByChannel.set(channelId, Date.now());
+}
+
+async function recordObservedChat(message: Message): Promise<void> {
+  if (!config.chatPresence.observeEnabled) return;
+
+  const content = chatContent(message);
+  if (content.length < config.chatPresence.observeMinMessageLength) return;
+
+  await recordConversationTurn({
+    source: "observed_chat",
+    userId: message.author.id,
+    username: message.author.username,
+    channelId: message.channelId,
+    prompt: content
+  });
+}
+
+async function maybeChimeIn(message: Message): Promise<void> {
+  if (!config.chatPresence.chimeEnabled) return;
+
+  const content = chatContent(message);
+  if (content.length < config.chatPresence.chimeMinMessageLength) return;
+  if (conversationMemory.looksSecret(content)) return;
+  if (Math.random() > config.chatPresence.chimeProbability) return;
+
+  const now = Date.now();
+  const lastChimeAt = lastChimeAtByChannel.get(message.channelId) ?? 0;
+  const cooldownMs = config.chatPresence.chimeCooldownMinutes * 60 * 1000;
+  if (now - lastChimeAt < cooldownMs) return;
+
+  lastChimeAtByChannel.set(message.channelId, now);
+
+  try {
+    await sendTypingToMessageChannel(message);
+    const response = await agent.createChatPresenceReply({
+      kind: "chime",
+      context: `A user just said: ${content}`,
+      userLabel: userLabel(message.author.id, message.author.username),
+      userId: message.author.id,
+      channelId: message.channelId
+    });
+
+    const sent = await sendToMessageChannel(message, response);
+    if (!sent) return;
+
+    await recordConversationTurn({
+      source: "chime",
+      userId: message.author.id,
+      username: message.author.username,
+      channelId: message.channelId,
+      prompt: content,
+      response
+    });
+  } catch (error) {
+    console.warn(`Could not chime into chat: ${errorMessage(error)}`);
+  }
+}
+
+function startChatReviver(): void {
+  if (!config.chatPresence.reviveEnabled) return;
+
+  const intervalMs = config.chatPresence.reviveCheckIntervalMinutes * 60 * 1000;
+  const timer = setInterval(() => {
+    void maybeSendChatRevive();
+  }, intervalMs);
+  timer.unref?.();
+}
+
+async function maybeSendChatRevive(): Promise<void> {
+  const channelId = chatReviveChannelId();
+  if (!channelId) return;
+
+  const now = Date.now();
+  const lastHumanMessageAt = lastHumanMessageAtByChannel.get(channelId) ?? startedAt;
+  const idleMs = config.chatPresence.reviveIdleMinutes * 60 * 1000;
+  const cooldownMs = config.chatPresence.reviveCooldownMinutes * 60 * 1000;
+
+  if (now - lastHumanMessageAt < idleMs) return;
+  if (now - lastChatReviveAt < cooldownMs) return;
+
+  const idleMinutes = Math.round((now - lastHumanMessageAt) / 60000);
+  const response = await agent
+    .createChatPresenceReply({
+      kind: "revive",
+      context: [
+        `The channel has been quiet for about ${idleMinutes} minutes.`,
+        `Configured fallback revive message: ${config.chatPresence.reviveMessage}`,
+        "Write a message that makes people want to talk again."
+      ].join("\n"),
+      channelId
+    })
+    .catch((error) => {
+      console.warn(`Could not generate chat revive: ${errorMessage(error)}`);
+      return config.chatPresence.reviveMessage;
+    });
+
+  const content = `${config.chatPresence.reviveUseEveryone ? "@everyone " : ""}${response}`.trim();
+  const sent = await sendToDiscordChannel(channelId, content, {
+    allowEveryone: config.chatPresence.reviveUseEveryone
+  });
+
+  if (!sent) return;
+
+  lastChatReviveAt = now;
+  await recordConversationTurn({
+    source: "revive",
+    userId: "system",
+    username: "BibiAI system",
+    channelId,
+    prompt: `Chat revive after ${idleMinutes} idle minute(s).`,
+    response: content
+  });
+}
+
+function chatReviveChannelId(): string | undefined {
+  if (config.chatPresence.reviveChannelId) return config.chatPresence.reviveChannelId;
+
+  const mostRecentObservedChannel = [...lastHumanMessageAtByChannel.entries()].sort((a, b) => b[1] - a[1])[0]?.[0];
+  return mostRecentObservedChannel ?? config.discord.allowedChannelIds[0];
+}
+
+function chatContent(message: Message): string {
+  return message.content.trim().replace(/\s+/g, " ");
+}
+
+async function sendTypingToMessageChannel(message: Message): Promise<void> {
+  const channel = message.channel as { sendTyping?: () => Promise<unknown> };
+  if (typeof channel.sendTyping === "function") {
+    await channel.sendTyping();
+  }
+}
+
+async function sendToMessageChannel(message: Message, content: string): Promise<boolean> {
+  const channel = message.channel as {
+    send?: (options: {
+      content: string;
+      allowedMentions?: { parse?: string[]; users?: string[]; roles?: string[] };
+    }) => Promise<unknown>;
+  };
+
+  if (typeof channel.send !== "function") return false;
+
+  await channel.send({
+    content: truncate(content, 1900),
+    allowedMentions: { parse: [] }
+  });
+  return true;
+}
+
 async function recordConversationTurn(input: {
   source: ConversationSource;
   userId: string;
   username: string;
   channelId: string | null;
   prompt: string;
-  response: string;
+  response?: string;
   mediaCount?: number;
 }): Promise<void> {
   try {
@@ -1015,11 +1176,20 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-async function sendToDiscordChannel(channelId: string | undefined, content: string): Promise<boolean> {
+async function sendToDiscordChannel(
+  channelId: string | undefined,
+  content: string,
+  options: { allowEveryone?: boolean } = {}
+): Promise<boolean> {
   if (!channelId) return false;
 
   const channel = await client.channels.fetch(channelId).catch(() => null);
-  const sendable = channel as { send?: (options: { content: string; allowedMentions?: { users: string[] } }) => Promise<unknown> } | null;
+  const sendable = channel as {
+    send?: (options: {
+      content: string;
+      allowedMentions?: { parse?: string[]; users?: string[]; roles?: string[] };
+    }) => Promise<unknown>;
+  } | null;
   if (typeof sendable?.send !== "function") {
     console.warn(`Could not send notification to Discord channel ${channelId}.`);
     return false;
@@ -1027,7 +1197,7 @@ async function sendToDiscordChannel(channelId: string | undefined, content: stri
 
   await sendable.send({
     content: truncate(content, 1900),
-    allowedMentions: { users: [] }
+    allowedMentions: options.allowEveryone ? { parse: ["everyone"], users: [], roles: [] } : { parse: [] }
   });
   return true;
 }

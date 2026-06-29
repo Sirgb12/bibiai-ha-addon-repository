@@ -80,6 +80,22 @@ const envSchema = z.object({
   CONVERSATION_MEMORY_RELEVANT_TURNS: z.coerce.number().int().min(0).max(100).default(12),
   CONVERSATION_MEMORY_MAX_ENTRY_LENGTH: z.coerce.number().int().min(200).max(5000).default(2000),
   CONVERSATION_MEMORY_MAX_PROMPT_CHARS: z.coerce.number().int().min(1000).max(20000).default(6000),
+  CHAT_OBSERVE_ENABLED: z.string().optional(),
+  CHAT_OBSERVE_MIN_MESSAGE_LENGTH: z.coerce.number().int().min(1).max(200).default(3),
+  CHAT_CHIME_ENABLED: z.string().optional(),
+  CHAT_CHIME_PROBABILITY: z.coerce.number().min(0).max(1).default(0.06),
+  CHAT_CHIME_COOLDOWN_MINUTES: z.coerce.number().int().min(1).max(10080).default(45),
+  CHAT_CHIME_MIN_MESSAGE_LENGTH: z.coerce.number().int().min(1).max(500).default(12),
+  CHAT_REVIVE_ENABLED: z.string().optional(),
+  CHAT_REVIVE_CHANNEL_ID: z.string().optional(),
+  CHAT_REVIVE_IDLE_MINUTES: z.coerce.number().int().min(5).max(10080).default(240),
+  CHAT_REVIVE_COOLDOWN_MINUTES: z.coerce.number().int().min(5).max(10080).default(720),
+  CHAT_REVIVE_CHECK_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
+  CHAT_REVIVE_USE_EVERYONE: z.string().optional(),
+  CHAT_REVIVE_MESSAGE: z
+    .string()
+    .max(500)
+    .default("The Honda Fit Republic requests signs of life. What is everyone building, plotting, or blaming on hummingbirds today?"),
   VISION_ENABLED: z.string().optional(),
   MAX_IMAGE_BYTES: z.coerce.number().int().min(1024).max(20 * 1024 * 1024).default(8 * 1024 * 1024),
   MAX_VIDEO_BYTES: z.coerce.number().int().min(1024).max(100 * 1024 * 1024).default(20 * 1024 * 1024),
@@ -271,6 +287,21 @@ export const config = {
     relevantTurns: env.CONVERSATION_MEMORY_RELEVANT_TURNS,
     maxEntryLength: env.CONVERSATION_MEMORY_MAX_ENTRY_LENGTH,
     maxPromptChars: env.CONVERSATION_MEMORY_MAX_PROMPT_CHARS
+  },
+  chatPresence: {
+    observeEnabled: boolFromEnv(env.CHAT_OBSERVE_ENABLED, true),
+    observeMinMessageLength: env.CHAT_OBSERVE_MIN_MESSAGE_LENGTH,
+    chimeEnabled: boolFromEnv(env.CHAT_CHIME_ENABLED, false),
+    chimeProbability: env.CHAT_CHIME_PROBABILITY,
+    chimeCooldownMinutes: env.CHAT_CHIME_COOLDOWN_MINUTES,
+    chimeMinMessageLength: env.CHAT_CHIME_MIN_MESSAGE_LENGTH,
+    reviveEnabled: boolFromEnv(env.CHAT_REVIVE_ENABLED, false),
+    reviveChannelId: cleanOptional(env.CHAT_REVIVE_CHANNEL_ID),
+    reviveIdleMinutes: env.CHAT_REVIVE_IDLE_MINUTES,
+    reviveCooldownMinutes: env.CHAT_REVIVE_COOLDOWN_MINUTES,
+    reviveCheckIntervalMinutes: env.CHAT_REVIVE_CHECK_INTERVAL_MINUTES,
+    reviveUseEveryone: boolFromEnv(env.CHAT_REVIVE_USE_EVERYONE, true),
+    reviveMessage: env.CHAT_REVIVE_MESSAGE
   },
   vision: {
     enabled: boolFromEnv(env.VISION_ENABLED, true),

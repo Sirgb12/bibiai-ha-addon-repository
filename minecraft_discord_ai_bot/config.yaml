@@ -1,5 +1,5 @@
 name: Minecraft Discord AI Bot
-version: "1.3.3"
+version: "1.3.4"
 slug: minecraft_discord_ai_bot
 description: AI-powered Discord bot for safely diagnosing and fixing a Minecraft server over RCON.
 url: "https://github.com/Sirgb12/bibiai-ha-addon-repository"
@@ -50,6 +50,19 @@ options:
   conversation_memory_relevant_turns: 12
   conversation_memory_max_entry_length: 2000
   conversation_memory_max_prompt_chars: 6000
+  chat_observe_enabled: true
+  chat_observe_min_message_length: 3
+  chat_chime_enabled: false
+  chat_chime_probability: 0.06
+  chat_chime_cooldown_minutes: 45
+  chat_chime_min_message_length: 12
+  chat_revive_enabled: false
+  chat_revive_channel_id: ""
+  chat_revive_idle_minutes: 240
+  chat_revive_cooldown_minutes: 720
+  chat_revive_check_interval_minutes: 30
+  chat_revive_use_everyone: true
+  chat_revive_message: "The Honda Fit Republic requests signs of life. What is everyone building, plotting, or blaming on hummingbirds today?"
   vision_enabled: true
   max_image_bytes: 8388608
   max_video_bytes: 20971520
@@ -165,6 +178,19 @@ schema:
   conversation_memory_relevant_turns: int
   conversation_memory_max_entry_length: int
   conversation_memory_max_prompt_chars: int
+  chat_observe_enabled: bool
+  chat_observe_min_message_length: int
+  chat_chime_enabled: bool
+  chat_chime_probability: float
+  chat_chime_cooldown_minutes: int
+  chat_chime_min_message_length: int
+  chat_revive_enabled: bool
+  chat_revive_channel_id: str
+  chat_revive_idle_minutes: int
+  chat_revive_cooldown_minutes: int
+  chat_revive_check_interval_minutes: int
+  chat_revive_use_everyone: bool
+  chat_revive_message: str
   vision_enabled: bool
   max_image_bytes: int
   max_video_bytes: int
